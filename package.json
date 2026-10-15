@@ -1,0 +1,35 @@
+{
+  "name": "eduagentpct",
+  "version": "1.0.0",
+  "description": "Proyek aplikasi pertama menggunakan Codex",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "partners:import": "node scripts/import-partners.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/david26-pct/EduAgentPCT.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/david26-pct/EduAgentPCT/issues"
+  },
+  "homepage": "https://github.com/david26-pct/EduAgentPCT#readme",
+  "dependencies": {
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "pdfkit": "^0.20.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}
