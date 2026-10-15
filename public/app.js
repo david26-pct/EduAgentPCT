@@ -63,7 +63,7 @@ async function signedIn() {
 function addParticipant(name = '') {
   if ($('#participants').children.length >= 10) return;
   const item = document.createElement('div'); item.className = 'participant';
-  item.innerHTML = `<label>Nama lengkap siswa *<input class="participant-name" required maxlength="100" value="${escapeHTML(name)}" ${name === student.name ? 'readonly' : ''}></label><label>Program studi *<input class="participant-program" required maxlength="150" value="Profesional 1 Tahun Komputer Internet dan Bisnis Digital"></label>${name === student.name ? '<span></span>' : '<button type="button" class="text-button" aria-label="Hapus peserta">Hapus</button>'}`;
+  item.innerHTML = `<label>Nama lengkap siswa *<input class="participant-name" required maxlength="100" value="${escapeHTML(name)}" ${name === student.name ? 'readonly' : ''}></label><label>Program studi *<input class="participant-program" required maxlength="150" value="Program Profesional 1 Tahun Koding, AI, dan Bisnis Digital"></label>${name === student.name ? '<span></span>' : '<button type="button" class="text-button" aria-label="Hapus peserta">Hapus</button>'}`;
   item.querySelector('button')?.addEventListener('click', () => { item.remove(); $('#add-participant').disabled = false; });
   $('#participants').append(item); $('#add-participant').disabled = $('#participants').children.length >= 10;
 }
