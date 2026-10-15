@@ -1,4 +1,5 @@
 import express from 'express';
+import { REQUEST_TYPES, CATEGORIES } from './public/request-options.js';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import PDFDocument from 'pdfkit';
@@ -17,6 +18,14 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, student_id INTEGER NOT NULL REFERENCES students(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS partners(id INTEGER PRIMARY KEY, name TEXT NOT NULL, recipient TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS letters(id INTEGER PRIMARY KEY, student_id INTEGER NOT NULL REFERENCES students(id), number TEXT UNIQUE, partner_id INTEGER NOT NULL REFERENCES partners(id), start TEXT NOT NULL, end TEXT NOT NULL, issued TEXT NOT NULL, participants TEXT NOT NULL, created TEXT DEFAULT CURRENT_TIMESTAMP);`);
+  // Additive migration: preserve existing letters; their category remains unspecified.
+  db.exec('BEGIN');
+  try {
+    const columns = db.prepare('PRAGMA table_info(letters)').all().map(c => c.name);
+    if (!columns.includes('request_type')) db.exec("ALTER TABLE letters ADD COLUMN request_type TEXT NOT NULL DEFAULT 'PKL'");
+    if (!columns.includes('category')) db.exec('ALTER TABLE letters ADD COLUMN category TEXT');
+    db.exec('COMMIT');
+  } catch (error) { db.exec('ROLLBACK'); throw error; }
   const app = express();
   app.disable('x-powered-by');
   // The deployment proxy overwrites forwarded headers and connects over loopback.
@@ -76,13 +85,14 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
   app.get('/api/partners', (req, res) => res.json(db.prepare('SELECT * FROM partners ORDER BY name').all()));
   app.get('/api/letters', (req, res) => res.json(db.prepare('SELECT letters.*, partners.name AS partner_name FROM letters JOIN partners ON partners.id=letters.partner_id WHERE student_id=? ORDER BY letters.id DESC').all(req.student.id).map(l => ({ ...l, participants: JSON.parse(l.participants) }))));
   app.post('/api/letters', (req, res) => {
-    const { number, partner_id, start, end, issued, participants } = req.body;
+    const { number, partner_id, start, end, issued, participants, request_type, category } = req.body;
+    if (!Object.hasOwn(REQUEST_TYPES, request_type || '') || !CATEGORIES.includes(category)) return res.status(400).json({ error: 'Pilih jenis permohonan PKL atau TCS dan kategori yang tersedia.' });
     const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
     if ((number && !text(number, 80)) || !date(start) || !date(end) || !date(issued) || start > end || !Array.isArray(participants) || participants.length < 1 || participants.length > 10 || participants.some(p => !text(p.name, 100) || !text(p.program, 150))) return res.status(400).json({ error: 'Periksa nomor surat, tanggal, dan data peserta (maksimal 10 siswa).' });
     if (!participants.some(p => p.name.trim().toLocaleLowerCase('id') === req.student.name.toLocaleLowerCase('id'))) return res.status(400).json({ error: 'Nama pemilik akun wajib tercantum dalam peserta.' });
     if (!db.prepare('SELECT id FROM partners WHERE id=?').get(partner_id)) return res.status(400).json({ error: 'Pilih mitra resmi dari daftar.' });
     try {
-      const result = db.prepare('INSERT INTO letters(student_id,number,partner_id,start,end,issued,participants) VALUES(?,?,?,?,?,?,?)').run(req.student.id, number?.trim() || null, partner_id, start, end, issued, JSON.stringify(participants.map(p => ({ name: p.name.trim(), program: p.program.trim() }))));
+      const result = db.prepare('INSERT INTO letters(student_id,number,partner_id,start,end,issued,participants,request_type,category) VALUES(?,?,?,?,?,?,?,?,?)').run(req.student.id, number?.trim() || null, partner_id, start, end, issued, JSON.stringify(participants.map(p => ({ name: p.name.trim(), program: p.program.trim() }))), request_type, category);
       res.status(201).json({ id: Number(result.lastInsertRowid) });
     } catch (error) {
       if (String(error).includes('UNIQUE')) return res.status(409).json({ error: 'Nomor surat sudah digunakan. Konfirmasikan kepada akademik.' });
@@ -93,18 +103,19 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     const l = db.prepare('SELECT letters.*, partners.name AS partner_name, partners.recipient FROM letters JOIN partners ON partners.id=letters.partner_id WHERE letters.id=? AND student_id=?').get(req.params.id, req.student.id);
     if (!l) return res.status(404).json({ error: 'Surat tidak ditemukan.' });
     if (!l.number) return res.status(400).json({ error: 'Draf belum memiliki nomor dari akademik. Buat surat lengkap setelah nomor diperoleh.' });
+    const requestName = REQUEST_TYPES[l.request_type];
     const date = value => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
-    res.type('pdf').attachment(`Surat-PKL-${l.id}.pdf`);
+    res.type('pdf').attachment(`Surat-${l.request_type}-${l.id}.pdf`);
     const doc = new PDFDocument({ size: 'A4', margin: 52, bufferPages: true });
     doc.pipe(res);
     doc.font('Helvetica-Bold').fontSize(22).fillColor('#0d4265').text('PalComTech Lahat');
     doc.font('Helvetica').fontSize(9).fillColor('#222').text('Jl. Kolonel M. Nuh No.02 – Kota Lahat').text('Telp. (0731) 3200778').text('www.palcomtech.ac.id | palcomtech.lahat@palcomtech.ac.id');
     doc.moveDown(.7).moveTo(52, doc.y).lineTo(543, doc.y).strokeColor('#0d4265').lineWidth(2).stroke();
-    doc.moveDown(1).fontSize(11).text(`Nomor: ${l.number}`).text('Perihal: Permohonan Praktek Kerja Lapangan').moveDown();
+    doc.moveDown(1).fontSize(11).text(`Nomor: ${l.number}`).text(`Perihal: Permohonan ${requestName}`).moveDown();
     doc.text('Kepada Yth,').text(l.recipient).text(l.partner_name).text('Di Tempat').moveDown();
     doc.text('Dengan hormat,').moveDown(.5);
-    doc.text('Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech Lahat untuk dapat menjalankan Praktek Kerja Lapangan (PKL) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.', { align: 'justify', lineGap: 3 });
-    doc.moveDown(.7).text(`Adapun nama siswa yang akan melaksanakan Praktek Kerja Lapangan pada ${date(l.start)} s.d. ${date(l.end)}, sebagai berikut:`, { lineGap: 3 }).moveDown(.7);
+    doc.text(`Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech Lahat untuk dapat menjalankan ${requestName} (${l.request_type}) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.`, { align: 'justify', lineGap: 3 });
+    doc.moveDown(.7).text(`Adapun nama siswa yang akan melaksanakan ${requestName} pada ${date(l.start)} s.d. ${date(l.end)}, sebagai berikut:`, { lineGap: 3 }).moveDown(.7);
     function row(cells, bold = false) {
       doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10);
       const widths = [30, 220, 241];
@@ -114,6 +125,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
       cells.forEach((t, i) => { doc.lineWidth(.5).strokeColor('#777').rect(x, y, widths[i], h).stroke(); doc.text(t, x + 6, y + 7, { width: widths[i] - 12 }); x += widths[i]; });
       doc.x = 52; doc.y = y + h;
     }
+    if (l.category) doc.font('Helvetica').fontSize(11).text(`Kategori: ${l.category}`).moveDown(.5);
     row(['No.', 'Nama', 'Program Studi'], true);
     JSON.parse(l.participants).forEach((p, i) => row([String(i + 1), p.name, p.program]));
     doc.moveDown().font('Helvetica').fontSize(11).text('Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya diucapkan terima kasih.', 52, doc.y, { width: 491, lineGap: 3 });

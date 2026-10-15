@@ -1,6 +1,9 @@
+import { REQUEST_TYPES, CATEGORIES } from './request-options.js';
 const $ = s => document.querySelector(s);
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 let mode = 'login', student, partners = [], letters = [];
+$('[name="request_type"]').innerHTML = Object.entries(REQUEST_TYPES).map(([value, name]) => `<option value="${value}">${value} (${name})</option>`).join('');
+$('[name="category"]').innerHTML += CATEGORIES.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join('');
 async function api(path, options = {}) {
   const response = await fetch('/api' + path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
   const data = await response.json();
@@ -92,26 +95,27 @@ $('#letter-form').onsubmit = async event => {
 const formatDate = value => new Date(value + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 function preview(data) {
   const partner = partners.find(p => p.id === data.partner_id);
-  $('#preview-content').innerHTML = `<h2>PalComTech Lahat</h2><p>Nomor: ${escapeHTML(data.number || '(Belum ada nomor — DRAF)')}<br>Perihal: Permohonan Praktek Kerja Lapangan</p><p>Kepada Yth,<br>${escapeHTML(partner?.recipient || '')}<br>${escapeHTML(partner?.name || '')}<br>Di Tempat</p><p>Dengan hormat,</p><p>Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech Lahat untuk dapat menjalankan Praktek Kerja Lapangan (PKL) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.</p><p>Adapun nama siswa yang akan melaksanakan PKL pada ${escapeHTML(formatDate(data.start))} s.d. ${escapeHTML(formatDate(data.end))}, sebagai berikut:</p><table><thead><tr><th>No.</th><th>Nama</th><th>Program Studi</th></tr></thead><tbody>${data.participants.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHTML(p.name)}</td><td>${escapeHTML(p.program)}</td></tr>`).join('')}</tbody></table><p>Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya diucapkan terima kasih.</p><p>Lahat, ${escapeHTML(formatDate(data.issued))}<br>Pimpinan</p><br><br><p>Abdul Rajab, S.E.<br>01.PCT.16.LHT</p><p><small>Contact Person: Akhmad Wan Mukhlas (Koordinator Akademik)<br>0823-73725066</small></p>`;
+  const requestName = REQUEST_TYPES[data.request_type || 'PKL'];
+  $('#preview-content').innerHTML = `<h2>PalComTech Lahat</h2><p>Nomor: ${escapeHTML(data.number || '(Belum ada nomor — DRAF)')}<br>Perihal: Permohonan ${escapeHTML(requestName)}</p><p>Kepada Yth,<br>${escapeHTML(partner?.recipient || '')}<br>${escapeHTML(partner?.name || '')}<br>Di Tempat</p><p>Dengan hormat,</p><p>Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech Lahat untuk dapat menjalankan ${escapeHTML(requestName)} (${escapeHTML(data.request_type || 'PKL')}) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.</p><p>Adapun nama siswa yang akan melaksanakan ${escapeHTML(requestName)} pada ${escapeHTML(formatDate(data.start))} s.d. ${escapeHTML(formatDate(data.end))}, sebagai berikut:</p><p>Kategori: ${escapeHTML(data.category || 'Belum dipilih (surat lama)')}</p><table><thead><tr><th>No.</th><th>Nama</th><th>Program Studi</th></tr></thead><tbody>${data.participants.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHTML(p.name)}</td><td>${escapeHTML(p.program)}</td></tr>`).join('')}</tbody></table><p>Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya diucapkan terima kasih.</p><p>Lahat, ${escapeHTML(formatDate(data.issued))}<br>Pimpinan</p><br><br><p>Abdul Rajab, S.E.<br>01.PCT.16.LHT</p><p><small>Contact Person: Akhmad Wan Mukhlas (Koordinator Akademik)<br>0823-73725066</small></p>`;
   $('#preview').showModal();
 }
 $('#preview-button').onclick = () => { if (validForm()) preview(formData()); };
 $('#close-preview').onclick = () => $('#preview').close();
 function renderList(target, entries) {
   if (!entries.length) { target.innerHTML = '<div class="empty"><strong>Belum ada surat PKL</strong><p>Surat yang kamu buat akan tersimpan di sini. Mulai dari menu Buat surat PKL.</p></div>'; return; }
-  target.innerHTML = '<div class="letter-list">' + entries.map(l => `<article class="letter-card"><div><h3>${escapeHTML(l.partner_name)}</h3><p>${escapeHTML(l.number || 'Nomor belum diisi')} · ${l.participants.length} siswa</p><p>${escapeHTML(formatDate(l.start))} – ${escapeHTML(formatDate(l.end))}</p><span class="status ${l.number ? '' : 'draft'}">${l.number ? 'Siap dicetak · perlu tanda tangan' : 'Draf · menunggu nomor akademik'}</span></div><div><button class="secondary preview-saved" data-id="${l.id}">Lihat</button> ${l.number ? `<button class="primary download" data-id="${l.id}">↓ PDF</button>` : `<button class="secondary complete" data-id="${l.id}">Lengkapi</button>`}</div></article>`).join('') + '</div>';
+  target.innerHTML = '<div class="letter-list">' + entries.map(l => `<article class="letter-card"><div><h3>${escapeHTML(l.partner_name)}</h3><p>${escapeHTML(l.request_type || 'PKL')} · ${escapeHTML(l.category || 'Kategori belum dipilih')}</p><p>${escapeHTML(l.number || 'Nomor belum diisi')} · ${l.participants.length} siswa</p><p>${escapeHTML(formatDate(l.start))} – ${escapeHTML(formatDate(l.end))}</p><span class="status ${l.number ? '' : 'draft'}">${l.number ? 'Siap dicetak · perlu tanda tangan' : 'Draf · menunggu nomor akademik'}</span></div><div><button class="secondary preview-saved" data-id="${l.id}">Lihat</button> ${l.number ? `<button class="primary download" data-id="${l.id}">↓ PDF</button>` : `<button class="secondary complete" data-id="${l.id}">Lengkapi</button>`}</div></article>`).join('') + '</div>';
   target.querySelectorAll('.preview-saved').forEach(b => b.onclick = () => preview(letters.find(l => l.id === Number(b.dataset.id))));
   target.querySelectorAll('.download').forEach(b => b.onclick = async () => {
     b.disabled = true;
     try {
       const response = await fetch(`/api/letters/${b.dataset.id}/pdf`);
       if (!response.ok) throw new Error((await response.json()).error);
-      const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `Surat-PKL-${b.dataset.id}.pdf`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 30000);
+      const url = URL.createObjectURL(await response.blob()); const link = document.createElement('a'); link.href = url; link.download = `Surat-${letters.find(l => l.id === Number(b.dataset.id)).request_type || 'PKL'}-${b.dataset.id}.pdf`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (e) { toast(e.message); } finally { b.disabled = false; }
   });
   target.querySelectorAll('.complete').forEach(b => b.onclick = () => {
     const l = letters.find(l => l.id === Number(b.dataset.id));
-    for (const field of ['number', 'partner_id', 'start', 'end', 'issued']) $('#letter-form').elements[field].value = l[field] || '';
+    for (const field of ['number', 'partner_id', 'start', 'end', 'issued', 'request_type', 'category']) $('#letter-form').elements[field].value = l[field] || (field === 'request_type' ? 'PKL' : '');
     $('#participants').replaceChildren(); l.participants.forEach(p => { addParticipant(p.name); $('#participants').lastElementChild.querySelector('.participant-program').value = p.program; });
     view('create'); toast('Data draf disalin. Isi nomor dari akademik lalu simpan sebagai surat baru.');
   });

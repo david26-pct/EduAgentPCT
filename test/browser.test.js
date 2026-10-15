@@ -26,6 +26,8 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('#auth-submit').click();
     await page.locator('#greeting').waitFor();
     await page.locator('.hero [data-view=create]').click();
+    await page.locator('[name=request_type]').selectOption('TCS');
+    await page.locator('[name=category]').selectOption('UI/UX Design');
     await page.locator('[name=number]').fill('0100/PCT3/P/2026');
     await page.locator('[name=partner_id]').selectOption('1');
     await page.locator('[name=start]').fill('2026-10-05');
@@ -34,6 +36,8 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('.participant-name').nth(1).fill('Siswa Kedua');
     await page.locator('#preview-button').click();
     assert.match(await page.locator('#preview-content').innerText(), /Siswa Kedua/);
+    assert.match(await page.locator('#preview-content').innerText(), /Thread Case Study/);
+    assert.match(await page.locator('#preview-content').innerText(), /UI\/UX Design/);
     await page.locator('#close-preview').click();
     await page.locator('#save-letter').click();
     await page.locator('#history .download').waitFor();
@@ -41,7 +45,7 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('#history .download').click();
     const download = await downloadEvent; await download.saveAs(join(dir, 'letter.pdf'));
     const pdfText = execFileSync('pdftotext', ['-layout', join(dir, 'letter.pdf'), '-'], { encoding: 'utf8' });
-    assert.match(pdfText, /0100\/PCT3\/P\/2026/); assert.match(pdfText, /Siswa Browser/); assert.match(pdfText, /Siswa Kedua/); assert.match(pdfText, /Abdul Rajab/);
+    assert.match(pdfText, /0100\/PCT3\/P\/2026/); assert.match(pdfText, /Siswa Browser/); assert.match(pdfText, /Siswa Kedua/); assert.match(pdfText, /Abdul Rajab/); assert.match(pdfText, /Thread Case Study/); assert.match(pdfText, /UI\/UX Design/);
     await page.locator('aside [data-view=dashboard]').click();
     mkdirSync('/workspace/artifacts', { recursive: true });
     await page.screenshot({ path: '/workspace/artifacts/eduagent-desktop.png', fullPage: true });

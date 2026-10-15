@@ -4,6 +4,9 @@ Versi awal portal siswa LKP PalComTech Lahat untuk membuat surat permohonan PKL.
 
 ## Fitur yang sudah berjalan
 
+- Jenis permohonan PKL (Praktik Kerja Lapangan) atau TCS (Thread Case Study), dengan kategori wajib: Internet of Things, Web Programing, UI/UX Design, Desain Grafis, Content Creator, dan Digital Marekting. Pilihan disimpan serta ditampilkan di pratinjau, riwayat dan PDF.
+- Migrasi database otomatis menambahkan kolom tanpa menghapus surat lama. Surat lama dianggap PKL dan kategorinya dibiarkan belum dipilih; kategori tidak ditebak.
+
 - Daftar mandiri dengan nama, NIS unik (3–30 angka), dan password minimal 10 karakter.
 - Login menggunakan nama, NIS, dan password. Hash password scrypt, cookie sesi HttpOnly/SameSite, masa berlaku 7 hari, pembatasan percobaan login, logout yang mencabut sesi.
 - Ringkasan siswa, daftar mitra, satu hingga sepuluh peserta dalam surat, tanggal PKL, dan riwayat surat per akun.
@@ -56,7 +59,7 @@ Impor menambah mitra, mempertahankan data lama, dan melewatkan nama yang telah a
 npm test
 ```
 
-Tes memakai database sementara yang dihapus sesudahnya, bukan database pengembangan. Dua pengujian integrasi mencakup backend dan browser: pendaftaran/login, validasi tanggal, draf tanpa nomor, nomor duplikat, isolasi akses antar-akun, logout, pratinjau beberapa peserta, unduhan PDF dan pemeriksaan teksnya, serta ukuran layar desktop dan ponsel.
+Tes memakai database sementara yang dihapus sesudahnya, bukan database pengembangan. Pengujian integrasi mencakup backend dan browser: pendaftaran/login, validasi tanggal, draf tanpa nomor, nomor duplikat, isolasi akses antar-akun, logout, pratinjau beberapa peserta, unduhan PDF dan pemeriksaan teksnya, ukuran layar desktop dan ponsel, kedua jenis permohonan dengan seluruh kategori, dan migrasi database lama yang dijalankan ulang.
 
 Tes browser membutuhkan Chromium di `/usr/bin/chromium` (atau variabel `CHROMIUM_PATH`) dan utilitas `pdftotext`. Jika belum tersedia, jalankan tes backend terpisah dengan `node --test test/app.test.js`; ini tidak menggantikan tes browser. Tidak perlu memasang Flutter untuk menjalankan versi web ini.
 
