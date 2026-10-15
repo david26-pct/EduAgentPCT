@@ -1,4 +1,5 @@
 import express from 'express';
+import { registerCareerRoutes } from './career.js';
 import { REQUEST_TYPES, CATEGORIES } from './public/request-options.js';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -10,7 +11,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 'data/app.sqlite'), secure = process.env.NODE_ENV === 'production' } = {}) {
+export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 'data/app.sqlite'), secure = process.env.NODE_ENV === 'production', careerOptions }  = {}) {
   mkdirSync(resolve(databasePath, '..'), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
@@ -77,6 +78,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     if (!req.student) return res.status(401).json({ error: 'Silakan masuk terlebih dahulu.' });
     next();
   });
+  registerCareerRoutes(app, db, careerOptions);
   app.get('/api/me', (req, res) => res.json(publicStudent(req.student)));
   app.post('/api/logout', (req, res) => {
     db.prepare('DELETE FROM sessions WHERE token=?').run(digest(req.sessionToken));

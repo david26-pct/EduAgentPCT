@@ -1,3 +1,4 @@
+import { initCareer } from './career.js';
 import './chatbot.js';
 import { REQUEST_TYPES, CATEGORIES } from './request-options.js';
 const $ = s => document.querySelector(s);
@@ -13,7 +14,7 @@ async function api(path, options = {}) {
 }
 function toast(message) { $('#toast').textContent = message; $('#toast').hidden = false; setTimeout(() => $('#toast').hidden = true, 4500); }
 function view(name) {
-  for (const v of ['dashboard', 'create', 'history']) $('#' + v + '-view').hidden = v !== name;
+  for (const v of ['dashboard', 'create', 'history', 'career']) $('#' + v + '-view').hidden = v !== name;
   document.querySelectorAll('aside [data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -42,7 +43,7 @@ $('#auth-form').onsubmit = async event => {
   catch (e) { $('#auth-error').textContent = e.message; }
   finally { $('#auth-submit').disabled = false; }
 };
-function signedOut() { student = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); $('#participants').replaceChildren(); $('#preview').close(); $('#chatbot-panel').close(); $('#preview-content').replaceChildren(); }
+function signedOut() { career.clear(); student = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); $('#participants').replaceChildren(); $('#preview').close(); $('#chatbot-panel').close(); $('#preview-content').replaceChildren(); }
 $('#logout').onclick = async () => { try { await api('/logout', { method: 'POST', body: '{}' }); signedOut(); } catch (e) { toast(e.message); } };
 const today = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'); };
 async function signedIn() {
@@ -58,6 +59,7 @@ async function signedIn() {
     $('#partner-help').textContent = partners.length ? 'Pilih tujuan dari daftar mitra yang dikelola akademik.' : 'Daftar mitra belum tersedia. Akademik perlu memasukkan data mitra resmi sebelum surat dapat dibuat.';
     $('#save-letter').disabled = !partners.length;
     await refreshLetters();
+    await career.load();
   } catch (e) { toast(e.message); }
   view('dashboard');
 }
@@ -126,6 +128,13 @@ async function refreshLetters() {
   $('#ready-count').textContent = letters.filter(l => l.number).length; $('#partner-count').textContent = partners.length;
   renderList($('#recent'), letters.slice(0, 3)); renderList($('#history'), letters);
 }
+const career = initCareer({ api, toast, onChoose: (partnerId, profile) => {
+  const form = $('#letter-form');
+  form.elements.partner_id.value = String(partnerId);
+  form.elements.request_type.value = profile.request_type;
+  form.elements.category.value = profile.category;
+  view('create'); toast('Mitra dan kategori dipilih. Lengkapi data surat.');
+} });
 (async () => { try { student = await api('/me'); await signedIn(); } catch { /* Halaman masuk untuk sesi yang belum tersedia. */ } })();
 
 $('#chatbot-start').onclick = () => { $('#chatbot-panel').close(); view('create'); };

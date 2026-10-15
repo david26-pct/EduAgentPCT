@@ -90,3 +90,42 @@ Tes browser membutuhkan Chromium di `/usr/bin/chromium` (atau variabel `CHROMIUM
 Jangan membuka versi pengembangan ke publik sebagai layanan produksi. Saat produksi gunakan HTTPS, `NODE_ENV=production`, backup database SQLite dengan mekanisme backup SQLite yang konsisten (jangan hanya menyalin file utama ketika WAL aktif), serta verifikasi NIS dan kebijakan privasi siswa. Reverse proxy perlu ditata sesuai topologi sebenarnya agar pembatasan IP bekerja; jangan mengaktifkan trust proxy secara membabi buta.
 
 Setiap tugas cloud sudah terisolasi. Gunakan checkout yang ada; jangan membuat Git worktree tanpa permintaan pengguna. Dependensi dan file database bertahan pada filesystem, tetapi proses server perlu dijalankan ulang pada tugas baru.
+
+
+## Keahlian & Karier
+
+Menu **Keahlian & Karier** menyimpan profil kategori PKL/TCS, keahlian, minat, pengalaman, lokasi, dan tautan portofolio per akun. Menyimpan ulang profil membatalkan rencana lama agar tidak ditampilkan untuk profil yang berubah.
+
+**Career Match** menggunakan pencocokan berbobot transparan, bukan model AI: kategori dan jenis kegiatan wajib sesuai (60 poin), persentase keahlian yang cocok menambah maksimal 30 poin, dan lokasi yang sama persis menambah 10 poin. Normalisasi hanya huruf kecil dan spasi; belum ada pemahaman sinonim atau jarak geografis. Hanya profil mitra dengan `verified: true` dan penerimaan selain `closed` yang dipakai. Status `unknown` tetap harus dikonfirmasi. Skor bukan peluang diterima. Tombol pilih mitra mengisi kategori, jenis kegiatan, dan mitra dalam formulir surat.
+
+Daftar nama 61 mitra belum memuat profil pekerjaan terverifikasi. Aplikasi tidak menebak kecocokan berdasarkan nama. Operator dapat memasukkan profil yang dikonfirmasi akademik melalui JSON berikut (contoh format, bukan klaim tentang mitra nyata):
+
+```json
+[
+  {
+    "name": "Nama persis mitra yang sudah terdaftar",
+    "categories": ["UI/UX Design"],
+    "request_types": ["PKL", "TCS"],
+    "skills": ["Figma", "User Research"],
+    "location": "Lahat",
+    "description": "Deskripsi tugas yang sudah dikonfirmasi ke mitra.",
+    "acceptance": "unknown",
+    "verified": true
+  }
+]
+```
+
+Jalankan `node scripts/import-partner-profiles.js /path/profil-mitra.json` untuk development. Untuk produksi jalankan dari release terpasang sebagai service user, misalnya `sudo -u eduagentpct env DB_PATH=/var/lib/eduagentpct/app.sqlite /opt/node-v24.19.0/bin/node /opt/eduagentpct/current/scripts/import-partner-profiles.js /path/profil-mitra.json`. File JSON harus dapat dibaca service user. Impor bersifat transaksional, menolak nama tidak dikenal, dan memperbarui metadata mitra yang disebut saja. Jangan menjalankan dengan data contoh atau kategori tebakan.
+
+**Rencana dasar 14 hari** tersedia tanpa API, dengan template per kategori. **Rencana AI** memakai OpenAI Responses API, hanya dipanggil saat siswa menekan tombol dan memberi persetujuan. Profil keahlian (kategori, jenis kegiatan, skills, minat, pengalaman) dikirim; aplikasi tidak mengirim nama, NIS, ID siswa, password, lokasi, atau URL portofolio. Siswa diminta tidak memasukkan data pribadi ke teks bebas. Tautan portofolio tidak di-fetch.
+
+Aktivasi pada VPS:
+
+1. Perbarui aplikasi dengan skrip deploy. Service membaca file opsional `/etc/eduagentpct.env`, yang tidak masuk repositori.
+2. Buat file root-only (`sudo install -m 600 /dev/null /etc/eduagentpct.env`) **hanya jika belum ada**, lalu edit melalui `sudo nano /etc/eduagentpct.env`. Pertahankan isi yang sudah ada. Tambahkan `AI_API_KEY` dengan nilai asli langsung di VPS serta `AI_MODEL=gpt-4.1-mini` (atau model Responses API yang tersedia untuk akun pengelola). Jangan memasukkan kunci dalam chat, source code, screenshot, atau perintah shell yang tercatat di history.
+3. Jalankan `sudo systemctl restart eduagentpct`. Pastikan HTTPS keluar menuju `api.openai.com` diizinkan dan akun API memiliki saldo. Pengaturan kunci cloud development berbeda dengan kunci pada VPS.
+4. Masuk sebagai siswa, simpan profil, beri persetujuan, dan buat rencana AI. Periksa hasilnya bersama pengajar. Jangan menganggap aktivasi berhasil hanya karena kunci telah disimpan.
+
+Maksimal tiga **percobaan** AI per siswa per hari UTC, disimpan di database; kegagalan juga dihitung dan tidak diulang otomatis. Setiap permintaan dibatasi 1.200 output token dan 30 detik. Batas ini bukan batas biaya global: atur anggaran di akun penyedia dan verifikasi NIS sebelum membuka layanan AI ke banyak pengguna, karena akun siswa masih dapat didaftarkan mandiri. `store: false` diminta pada API, tetapi bukan janji tanpa retensi pada seluruh infrastruktur penyedia. Rencana disimpan lokal per siswa. AI bisa keliru dan tidak menjamin kompetensi/diterimanya siswa.
+
+Pengujian: profil privat, validasi, impor metadata, pengurutan mitra terverifikasi, rencana dasar, persetujuan, batas harian, dan kegagalan penyedia diperiksa. Panggilan AI memakai **simulasi** dalam tes; panggilan nyata belum diverifikasi karena kunci API belum tersedia di development.
