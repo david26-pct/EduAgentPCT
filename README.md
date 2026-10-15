@@ -24,7 +24,7 @@ npm ci --cache /workspace/.npm-cache
 npm start
 ```
 
-Secara default server hanya mendengarkan `127.0.0.1:3000`. Halaman aplikasi tersedia di root server. `GET /api/health` harus menghasilkan `{"status":"ok"}`. Database disimpan di `data/app.sqlite` dan tidak masuk Git. Akun dan mitra produksi awalnya kosong; akun uji tidak dibuat di database utama.
+Secara default server hanya mendengarkan `127.0.0.1:3000`. Halaman aplikasi tersedia di root server. `GET /api/health` harus menghasilkan `{"status":"ok"}`. Database disimpan di `data/app.sqlite` dan tidak masuk Git. Database baru tidak memiliki akun. Daftar mitra resmi dimasukkan lewat perintah impor atau saat deploy; akun uji tidak dibuat di database utama.
 
 Variabel proses opsional:
 
@@ -39,7 +39,17 @@ Aplikasi tidak memuat `.env` otomatis. Jangan memasukkan password/credential ke 
 
 ## Memasukkan mitra resmi
 
-Tidak ada perusahaan contoh yang otomatis dianggap mitra resmi. Siapkan JSON dari data yang dikonfirmasi akademik, di luar repositori:
+Daftar 61 mitra yang diberikan pemilik proyek tersedia di `scripts/partners-palcomtech.json`, termasuk Kantor Lurah Bandar Jaya pada judul tabel kedua. Nama disimpan sesuai daftar. Karena jabatan penerima belum diberikan, sapaan awal adalah “Pimpinan”. Pengadilan Agama dan Pengadilan Agama Lahat dipertahankan terpisah.
+
+Untuk memasukkannya ke database pengembangan:
+
+```sh
+npm run partners:import -- scripts/partners-palcomtech.json
+```
+
+Skrip deploy mengimpor daftar ini setelah backup, dengan pengguna service `eduagentpct`. Impor berulang melewatkan nama yang sudah ada, mempertahankan ID, jabatan penerima yang sudah disesuaikan, dan data lain. Daftar tidak dimasukkan otomatis pada setiap startup aplikasi.
+
+Untuk daftar tambahan, siapkan JSON dari data yang dikonfirmasi akademik, di luar repositori:
 
 ```json
 [

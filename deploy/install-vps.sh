@@ -43,6 +43,8 @@ if [[ -f "$STATE_DIR/app.sqlite" ]]; then
   sqlite3 "$STATE_DIR/app.sqlite" ".backup '/var/backups/eduagentpct/pre-deploy-$(date -u +%Y%m%dT%H%M%SZ).sqlite'"
   chmod 0600 /var/backups/eduagentpct/*.sqlite
 fi
+# Import the user-confirmed list under the service account; preserve existing entries.
+runuser -u eduagentpct -- env DB_PATH="$STATE_DIR/app.sqlite" "/opt/node-v$NODE_VERSION/bin/node" "$RELEASE/scripts/import-partners.js" "$RELEASE/scripts/partners-palcomtech.json"
 # Keep any existing current release for operator rollback; never remove the database.
 ln -s "$RELEASE" "$APP_DIR/current.next"
 mv -Tf "$APP_DIR/current.next" "$APP_DIR/current"
