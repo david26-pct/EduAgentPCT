@@ -108,8 +108,15 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     res.type('pdf').attachment(`Surat-${l.request_type}-${l.id}.pdf`);
     const doc = new PDFDocument({ size: 'A4', margin: 52, bufferPages: true });
     doc.pipe(res);
-    doc.font('Helvetica-Bold').fontSize(22).fillColor('#0d4265').text('PalComTech Lahat');
+    // Lay out the original embedded Word image, clipping to its logo region.
+    // The source asset is preserved without repainting or changing the logo.
+    const logoScale = 52 / 127;
+    doc.save().rect(52, 52, 52, 55).clip();
+    doc.image(resolve(root, 'public/assets/palcomtech-letterhead.jpg'), 52 - 115 * logoScale, 52 - 34 * logoScale, { width: 1239 * logoScale });
+    doc.restore();
+    doc.font('Helvetica-Bold').fontSize(22).fillColor('#0d4265').text('PalComTech Lahat', 116, 52);
     doc.font('Helvetica').fontSize(9).fillColor('#222').text('Jl. Kolonel M. Nuh No.02 – Kota Lahat').text('Telp. (0731) 3200778').text('www.palcomtech.ac.id | palcomtech.lahat@palcomtech.ac.id');
+    doc.x = 52; doc.y = 115;
     doc.moveDown(.7).moveTo(52, doc.y).lineTo(543, doc.y).strokeColor('#0d4265').lineWidth(2).stroke();
     doc.moveDown(1).fontSize(11).text(`Nomor: ${l.number}`).text(`Perihal: Permohonan ${requestName}`).moveDown();
     doc.text('Kepada Yth,').text(l.recipient).text(l.partner_name).text('Di Tempat').moveDown();

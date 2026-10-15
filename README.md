@@ -79,7 +79,7 @@ Tes browser membutuhkan Chromium di `/usr/bin/chromium` (atau variabel `CHROMIUM
 
 - Belum ada penautan/login Google. Tampilan menyebutnya belum tersedia; tidak ada tombol login palsu. Diperlukan proyek OAuth Google, domain HTTPS, dan implementasi callback serta penautan identitas yang aman.
 - Belum ada verifikasi NIS terhadap daftar siswa akademik. Validasi sekarang hanya memeriksa format dan keunikan. Nomor surat yang diketik juga belum diverifikasi ke arsip akademik.
-- PDF mengikuti isi contoh `Contoh Format.docx`, dengan kop teks sederhana. Logo/kop grafis asli dan kesamaan tata letak Word belum diterapkan. Identitas pimpinan dan kontak berasal dari contoh; akademik perlu mengonfirmasi sebelum dipakai resmi.
+- Logo pada halaman login, sidebar, pratinjau, dan PDF berasal dari aset kop asli dalam `Contoh Format.docx` (`public/assets/palcomtech-letterhead.jpg`). CSS dan layout PDF menampilkan area logo dari aset tersebut tanpa mengubah file gambar. Isi surat mengikuti contoh, tetapi kesamaan tata letak lengkap dengan Word belum diterapkan. Identitas pimpinan dan kontak berasal dari contoh; akademik perlu mengonfirmasi sebelum dipakai resmi.
 - Belum ada reset password, panel akademik, atau audit administratif. Data mitra dikelola lewat perintah impor lokal.
 - Database awal SQLite, bukan PostgreSQL yang direncanakan untuk pengembangan produksi. Migrasi perlu dilakukan terpisah; kapasitas VPS belum diuji.
 - Belum dipasang ke VPS Sumopod dan belum mengubah DNS `eduagentpct.my.id`. Rencana backend produksi: `api.eduagentpct.my.id`, HTTPS lewat reverse proxy, layanan non-root, backup di luar VPS, dan pengujian akses sebelum peluncuran. Frontend web dan API saat ini harus dilayani dari origin yang sama.

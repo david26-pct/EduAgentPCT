@@ -18,6 +18,9 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
   page.on('pageerror', e => errors.push(e.message));
   try {
     await page.goto(`http://127.0.0.1:${server.address().port}`);
+    const loginLogo = page.locator('#auth .brand-mark img');
+    await loginLogo.waitFor({ state: 'visible' });
+    assert.equal(await loginLogo.evaluate(img => img.complete && img.naturalWidth === 1239), true);
     await page.locator('#register-tab').click();
     await page.locator('#auth-form [name=name]').fill('Siswa Browser');
     await page.locator('#auth-form [name=nis]').fill('20260001');
@@ -25,6 +28,7 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('#auth-form [name=confirm]').fill('password-browser-aman');
     await page.locator('#auth-submit').click();
     await page.locator('#greeting').waitFor();
+    assert.equal(await page.locator('aside .brand-mark img').isVisible(), true);
     await page.locator('#chatbot-toggle').click();
     assert.equal(await page.locator('#chatbot-panel').isVisible(), true);
     assert.match(await page.locator('#chatbot-panel').innerText(), /Koneksi AI belum aktif/);
