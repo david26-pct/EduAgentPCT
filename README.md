@@ -4,6 +4,8 @@ Versi awal portal siswa LKP PalComTech Lahat untuk membuat surat permohonan PKL.
 
 ## Fitur yang sudah berjalan
 
+- Tombol mengambang Chatbot AI di ruang siswa, dengan panel panduan kategori, pemilihan mitra, dan pembuatan surat. Panel menyatakan koneksi AI belum aktif; panduan merupakan teks aplikasi, bukan keluaran model. Belum ada pengiriman pesan, integrasi API AI, atau rekomendasi mitra otomatis.
+
 - Jenis permohonan PKL (Praktik Kerja Lapangan) atau TCS (Thread Case Study), dengan kategori wajib: Internet of Things, Web Programing, UI/UX Design, Desain Grafis, Content Creator, dan Digital Marekting. Pilihan disimpan serta ditampilkan di pratinjau, riwayat dan PDF.
 - Migrasi database otomatis menambahkan kolom tanpa menghapus surat lama. Surat lama dianggap PKL dan kategorinya dibiarkan belum dipilih; kategori tidak ditebak.
 

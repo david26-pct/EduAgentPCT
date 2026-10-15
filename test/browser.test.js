@@ -25,7 +25,13 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('#auth-form [name=confirm]').fill('password-browser-aman');
     await page.locator('#auth-submit').click();
     await page.locator('#greeting').waitFor();
-    await page.locator('.hero [data-view=create]').click();
+    await page.locator('#chatbot-toggle').click();
+    assert.equal(await page.locator('#chatbot-panel').isVisible(), true);
+    assert.match(await page.locator('#chatbot-panel').innerText(), /Koneksi AI belum aktif/);
+    await page.locator('[data-chat-guide=partner]').click();
+    assert.match(await page.locator('#chatbot-guide').innerText(), /bukan jawaban AI/);
+    await page.locator('#chatbot-start').click();
+    assert.equal(await page.locator('#chatbot-panel').isVisible(), false);
     await page.locator('[name=request_type]').selectOption('TCS');
     await page.locator('[name=category]').selectOption('UI/UX Design');
     await page.locator('[name=number]').fill('0100/PCT3/P/2026');
@@ -52,6 +58,10 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: '/workspace/artifacts/eduagent-mobile.png', fullPage: true });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, 'Tidak boleh ada overflow horizontal di mobile');
+    await page.locator('#chatbot-toggle').click();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#chatbot-panel').isVisible(), false);
     await page.locator('aside [data-view=create]').click();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.reload(); await page.locator('#workspace').waitFor();

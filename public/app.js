@@ -1,3 +1,4 @@
+import './chatbot.js';
 import { REQUEST_TYPES, CATEGORIES } from './request-options.js';
 const $ = s => document.querySelector(s);
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -41,7 +42,7 @@ $('#auth-form').onsubmit = async event => {
   catch (e) { $('#auth-error').textContent = e.message; }
   finally { $('#auth-submit').disabled = false; }
 };
-function signedOut() { student = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); $('#participants').replaceChildren(); $('#preview').close(); $('#preview-content').replaceChildren(); }
+function signedOut() { student = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); $('#participants').replaceChildren(); $('#preview').close(); $('#chatbot-panel').close(); $('#preview-content').replaceChildren(); }
 $('#logout').onclick = async () => { try { await api('/logout', { method: 'POST', body: '{}' }); signedOut(); } catch (e) { toast(e.message); } };
 const today = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'); };
 async function signedIn() {
@@ -126,3 +127,5 @@ async function refreshLetters() {
   renderList($('#recent'), letters.slice(0, 3)); renderList($('#history'), letters);
 }
 (async () => { try { student = await api('/me'); await signedIn(); } catch { /* Halaman masuk untuk sesi yang belum tersedia. */ } })();
+
+$('#chatbot-start').onclick = () => { $('#chatbot-panel').close(); view('create'); };
