@@ -1,5 +1,5 @@
 import express from 'express';
-import { BRANCHES, LETTERHEADS } from './public/branches.js';
+import { BRANCHES, LETTERHEADS, getSignatureQR } from './public/branches.js';
 import { migrateBranches } from './branch-migration.js';
 import { registerCareerRoutes } from './career.js';
 import { REQUEST_TYPES, CATEGORIES } from './public/request-options.js';
@@ -146,8 +146,16 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     row(['No.', 'Nama', 'Program Studi'], true);
     JSON.parse(l.participants).forEach((p, i) => row([String(i + 1), p.name, p.program]));
     doc.moveDown().font('Helvetica').fontSize(11).text('Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya diucapkan terima kasih.', 52, doc.y, { width: 491, lineGap: 3 });
-    if (doc.y > 560) doc.addPage();
-    doc.moveDown().text(`${head.city}, ${date(l.issued)}`, { align: 'right' }).text('Pimpinan', { align: 'right' }).moveDown(4).font('Helvetica-Bold').text(head.leader, { align: 'right' }).font('Helvetica').text(head.leader_id, { align: 'right' });
+    const signatureQR = getSignatureQR(req.student.branch, l.request_type);
+    if (doc.y + (signatureQR ? 210 : 175) > doc.page.height - doc.page.margins.bottom) doc.addPage();
+    doc.moveDown().text(`${head.city}, ${date(l.issued)}`, { align: 'right' }).text('Pimpinan', { align: 'right' });
+    if (signatureQR) {
+      const qrSize = 100;
+      const qrY = doc.y + 6;
+      doc.image(resolve(root, 'public', signatureQR.slice(1)), doc.page.width - doc.page.margins.right - qrSize, qrY, { width: qrSize, height: qrSize });
+      doc.x = 52; doc.y = qrY + qrSize + 6;
+    } else doc.moveDown(4);
+    doc.font('Helvetica-Bold').text(head.leader, { align: 'right' }).font('Helvetica').text(head.leader_id, { align: 'right' });
     doc.moveDown().fontSize(9).text('Tembusan Yth. Arsip').text(`Contact Person: ${head.contact}`).text(head.contact_phone);
     doc.end();
   });

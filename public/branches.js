@@ -8,3 +8,8 @@ export const LETTERHEADS = {
     contact: 'Akhmad Wan Mukhlas (Koordinator Akademik)', contact_phone: '0823-73725066',
   },
 };
+
+// The supplied QR is authorized only for Lahat PKL letters.
+export function getSignatureQR(branch, requestType) {
+  return branch === 'Lahat' && requestType === 'PKL' ? '/assets/signature-lahat.png' : null;
+}

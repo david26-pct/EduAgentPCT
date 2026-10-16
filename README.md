@@ -157,3 +157,13 @@ node scripts/import-partner-profiles.js scripts/career-partners-lahat.json --onl
 Installer VPS menjalankan dua impor tersebut otomatis setelah backup/migrasi dan sebelum service dinyalakan ulang. Opsi `--only-missing` tidak menimpa metadata yang telah diedit akademik. Untuk memperbarui profil yang sudah ada secara sengaja, gunakan perintah impor tanpa opsi tersebut, setelah meninjau perubahannya. Cabang lain dan TCS tidak diberi profil hasil tebakan.
 
 Contoh uji: masuk cabang Lahat, buka Keahlian & Karier, pilih PKL + UI/UX Design, isi keahlian Figma dan lokasi Lahat, simpan, lalu cari mitra. Notaris Laogita akan muncul berdasarkan data ini. PKL + Web Programing menampilkan Badan Pusat Statistik. Rekomendasi tetap bukan jaminan penerimaan; konfirmasikan kembali kepada mitra.
+
+## QR pimpinan pada surat PKL Lahat
+
+`public/assets/signature-lahat.png` adalah gambar asli `qr.png` dari arsip `qr.rar` yang diberikan pemilik proyek. File disalin tanpa mengubah piksel; hash SHA256-nya `27a33fba18decb088fe34b09f1cede9390cd6ea4fd1b1f2c6314659ecb3f86c5`.
+
+QR tampil di pratinjau dan PDF PKL cabang Lahat, di bawah tulisan Pimpinan dan sebelum nama Abdul Rajab, S.E. Surat TCS dan cabang lain tidak memakai gambar ini. PDF menampilkan gambar berukuran 100 pt (sekitar 35 mm), mempertahankan seluruh gambar dan rasio aslinya; blok tanda tangan dipindahkan ke halaman berikutnya bila ruang tidak cukup. Unduhan ulang PDF surat lama PKL Lahat mengikuti template terbaru, termasuk QR ini.
+
+Ini penempatan gambar QR yang diberikan pengguna, bukan implementasi tanda tangan kriptografis atau verifikasi keaslian surat. Tujuan QR tidak dibuka otomatis oleh aplikasi. Ketentuan stempel tetap mengikuti akademik.
+
+Tes mendekode QR asli dan hasil raster PDF untuk surat satu dan sepuluh peserta, lalu membandingkan isinya tanpa mencetak isi QR ke log. Uji raster membutuhkan `pdftoppm` (`/usr/bin/pdftoppm`, dapat diatur lewat `PDFTOPPM_PATH`), di samping prasyarat tes lain.

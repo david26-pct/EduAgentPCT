@@ -65,6 +65,17 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     assert.match(await page.locator('#preview-content').innerText(), /Siswa Kedua/);
     assert.match(await page.locator('#preview-content').innerText(), /Thread Case Study/);
     assert.match(await page.locator('#preview-content').innerText(), /UI\/UX Design/);
+    assert.equal(await page.locator('#preview-content .signature-qr').count(), 0);
+    await page.locator('#close-preview').click();
+    await page.locator('#letter-form [name=request_type]').selectOption('PKL');
+    await page.locator('#preview-button').click();
+    const qr = page.locator('#preview-content .signature-qr img');
+    await qr.waitFor({ state: 'visible' });
+    assert.equal(await qr.evaluate(img => img.complete && img.naturalWidth === 1000), true);
+    await page.screenshot({ path: '/workspace/artifacts/eduagent-preview-qr.png', fullPage: true });
+    await page.locator('#close-preview').click();
+    await page.locator('#letter-form [name=request_type]').selectOption('TCS');
+    await page.locator('#preview-button').click();
     await page.locator('#close-preview').click();
     await page.locator('#save-letter').click();
     await page.locator('#history .download').waitFor();
