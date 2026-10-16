@@ -193,7 +193,7 @@ Pengujian mencakup E2E dua browser siswa/akademik: ajukan → tautan WhatsApp ta
 
 ## Email persetujuan otomatis
 
-Selain tombol WhatsApp, setiap pengajuan baru dan pengiriman ulang revisi kini membuat pekerjaan email pada tabel `academic_email_jobs` di dalam transaksi penyimpanan pengajuan. Penerima default cabang Lahat adalah **akademik.pctlht@gmail.com**, sesuai informasi pemilik proyek. Email cabang lain harus dikonfigurasi terpisah; tidak ada fallback lintas-cabang.
+Selain tombol WhatsApp, setiap pengajuan baru dan pengiriman ulang revisi kini membuat pekerjaan email pada tabel `academic_email_jobs` di dalam transaksi penyimpanan pengajuan. Penerima default cabang Lahat adalah **tugasbelajarpctlahat@gmail.com**, sesuai informasi pemilik proyek. Email cabang lain harus dikonfigurasi terpisah; tidak ada fallback lintas-cabang.
 
 Email berisi tautan HTTPS `/academic.html?request=...` tanpa lampiran PDF, nama/NIS siswa, atau rincian peserta. Akademik tetap harus login pada cabang terkait dan melakukan tindakan eksplisit untuk menyetujui/mengisi nomor. WhatsApp tetap manual dan independen dari hasil email. Kegagalan SMTP tidak membatalkan pengajuan.
 
@@ -210,12 +210,12 @@ Isi variabel berikut dengan nilai milik pengelola:
 ```ini
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
-SMTP_USER=akademik.pctlht@gmail.com
+SMTP_USER=tugasbelajarpctlahat@gmail.com
 SMTP_PASS=isi-langsung-di-VPS
-MAIL_FROM=akademik.pctlht@gmail.com
+MAIL_FROM=tugasbelajarpctlahat@gmail.com
 ```
 
-Pemilik proyek memilih Gmail akademik.pctlht@gmail.com sebagai pengirim sekaligus penerima cabang Lahat. Gunakan **App Password** dengan verifikasi dua langkah bila akun mendukungnya, bukan password login biasa. Jika akun Workspace membatasi SMTP/App Password, gunakan konfigurasi resmi administrator atau provider SMTP lain. Port yang didukung 465 (TLS langsung) atau 587 (STARTTLS wajib), dengan pemeriksaan sertifikat tetap aktif. Untuk provider lain sesuaikan host/port. MAIL_FROM harus alamat pengirim yang diizinkan akun SMTP, tanpa display name.
+Pemilik proyek memilih Gmail tugasbelajarpctlahat@gmail.com sebagai pengirim sekaligus penerima cabang Lahat. Gunakan **App Password** dengan verifikasi dua langkah bila akun mendukungnya, bukan password login biasa. Jika akun Workspace membatasi SMTP/App Password, gunakan konfigurasi resmi administrator atau provider SMTP lain. Port yang didukung 465 (TLS langsung) atau 587 (STARTTLS wajib), dengan pemeriksaan sertifikat tetap aktif. Untuk provider lain sesuaikan host/port. MAIL_FROM harus alamat pengirim yang diizinkan akun SMTP, tanpa display name.
 
 Penerima Lahat sudah disimpan pada konfigurasi cabang. Opsional override lewat `ACADEMIC_EMAIL_LAHAT`; untuk beberapa cabang gunakan `ACADEMIC_EMAILS_JSON` berisi objek nama cabang → satu alamat email. Override JSON memiliki prioritas tertinggi. Jangan memakai alamat tujuan yang dikirim browser siswa sebagai penerima.
 

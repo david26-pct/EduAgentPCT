@@ -42,4 +42,4 @@ Untuk produksi penuh masih diperlukan verifikasi NIS, kebijakan privasi, reset p
 
 Sesudah memasang versi approval, buat akun akademik melalui perintah interaktif pada README utama. Akun tidak dibuat otomatis. Pengajuan/surat lama menjadi menunggu pemeriksaan dan tidak bisa diunduh sebelum disetujui; informasikan perubahan alur kepada akademik.
 
-Email otomatis memakai nodemailer melalui SMTP TLS dan tabel antrean persisten. Deploy tidak membuat/mengubah credential SMTP. Pengaturan pengirim harus diisi aman di `/etc/eduagentpct.env`; penerima default Lahat akademik.pctlht@gmail.com. Tanpa konfigurasi SMTP, pengajuan tetap tersimpan dan WhatsApp tetap tersedia. Lihat README utama untuk aktivasi dan uji inbox nyata.
+Email otomatis memakai nodemailer melalui SMTP TLS dan tabel antrean persisten. Deploy tidak membuat/mengubah credential SMTP. Pengaturan pengirim harus diisi aman di `/etc/eduagentpct.env`; penerima default Lahat tugasbelajarpctlahat@gmail.com. Tanpa konfigurasi SMTP, pengajuan tetap tersimpan dan WhatsApp tetap tersedia. Lihat README utama untuk aktivasi dan uji inbox nyata.

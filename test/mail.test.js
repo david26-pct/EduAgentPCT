@@ -40,7 +40,7 @@ test('Email otomatis: antrean tahan restart, per cabang, revisi, tanpa PII, tanp
   await notifications.processPending();assert.equal(sent.at(-1).to,'academic.opi@example.test');
   delete mailOptions.env.ACADEMIC_EMAILS_JSON;
   db.prepare("UPDATE letters SET branch='Lahat',version=5 WHERE id=?").run(id);notifications.enqueue(id,5);
-  await notifications.processPending();assert.equal(sent.at(-1).to,'akademik.pctlht@gmail.com');
+  await notifications.processPending();assert.equal(sent.at(-1).to,'tugasbelajarpctlahat@gmail.com');
  }finally{notifications.stop();await new Promise(r=>server.close(r));db.close();rmSync(dir,{recursive:true,force:true});}
 });
 
