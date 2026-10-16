@@ -190,3 +190,35 @@ Perintah meminta password 12–128 karakter dua kali melalui terminal tanpa echo
 **Migrasi surat lama:** semua surat yang belum mempunyai status persetujuan menjadi pending, termasuk surat yang sebelumnya diberi nomor siswa. Data/nomor lama dipertahankan untuk ditinjau, tidak dianggap otomatis sah. Akademik harus memeriksa dan menyetujui sebelum unduhan berikutnya; file yang pernah diunduh sebelumnya tidak dapat dicabut dari perangkat pengguna. Backup dibuat installer sebelum migrasi. Tidak ada akun akademik produksi yang dibuat otomatis saat deploy; buat akun pertama sebelum meminta siswa mengajukan.
 
 Pengujian mencakup E2E dua browser siswa/akademik: ajukan → tautan WhatsApp tanpa mengirim pesan → login akademik → revisi → siswa memperbaiki pada ID sama → persetujuan dan nomor → unduh PDF. Tes API memeriksa akses lintas-cabang, upaya memalsukan status/nomor, persetujuan usang, audit, logout, dan nomor ganda. Pengiriman pesan WhatsApp nyata tidak diuji dan tidak dilakukan.
+
+## Email persetujuan otomatis
+
+Selain tombol WhatsApp, setiap pengajuan baru dan pengiriman ulang revisi kini membuat pekerjaan email pada tabel `academic_email_jobs` di dalam transaksi penyimpanan pengajuan. Penerima default cabang Lahat adalah **akademik.pctlht@gmail.com**, sesuai informasi pemilik proyek. Email cabang lain harus dikonfigurasi terpisah; tidak ada fallback lintas-cabang.
+
+Email berisi tautan HTTPS `/academic.html?request=...` tanpa lampiran PDF, nama/NIS siswa, atau rincian peserta. Akademik tetap harus login pada cabang terkait dan melakukan tindakan eksplisit untuk menyetujui/mengisi nomor. WhatsApp tetap manual dan independen dari hasil email. Kegagalan SMTP tidak membatalkan pengajuan.
+
+Service utama memproses antrean saat startup dan setiap 30 detik, maksimal 10 pekerjaan per putaran. Modul `createApp` tidak memulai pengiriman otomatis ketika dipakai CLI impor atau tes. Antrean bertahan dalam database saat proses restart. Konfigurasi tidak lengkap membuat pekerjaan blocked tanpa menghabiskan percobaan. Kegagalan SMTP dicoba ulang maksimal tiga percobaan dengan jeda 1 lalu 2 menit; setelah itu failed. Pengajuan yang sudah diputuskan atau mempunyai versi lebih baru dibatalkan notifikasinya bila belum dikirim. Tidak ada backfill otomatis untuk surat lama agar tidak tiba-tiba mengirim banyak pesan; surat lama tetap tersedia di antrean akademik/WhatsApp.
+
+Riwayat siswa menunjukkan queued/blocked/sending/retry/failed atau submitted. Submitted berarti **server SMTP menerima alamat tujuan**, bukan bukti pesan tiba di inbox atau dibaca. Periksa spam dan reputasi pengirim. Lease 2 menit dan Message-ID stabil mengurangi pengiriman ganda pada proses normal; crash tepat setelah SMTP menerima sebelum database mencatat hasil masih bisa menyebabkan pengiriman ulang. Tidak ada klaim exactly-once atau pemantauan bounce/inbox.
+
+### Konfigurasi di VPS
+
+Pengiriman belum aktif sebelum alamat pengirim dan akses SMTP dipasang. Edit **file yang sudah ada** `/etc/eduagentpct.env` sebagai root dan pertahankan pengaturan AI/variabel lain. Bila file belum ada, buat dengan mode 0600 terlebih dahulu. Jangan memasukkan password ke command line, Git, screenshot atau chat.
+
+Isi variabel berikut dengan nilai milik pengelola:
+
+```ini
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=akademik.pctlht@gmail.com
+SMTP_PASS=isi-langsung-di-VPS
+MAIL_FROM=akademik.pctlht@gmail.com
+```
+
+Pemilik proyek memilih Gmail akademik.pctlht@gmail.com sebagai pengirim sekaligus penerima cabang Lahat. Gunakan **App Password** dengan verifikasi dua langkah bila akun mendukungnya, bukan password login biasa. Jika akun Workspace membatasi SMTP/App Password, gunakan konfigurasi resmi administrator atau provider SMTP lain. Port yang didukung 465 (TLS langsung) atau 587 (STARTTLS wajib), dengan pemeriksaan sertifikat tetap aktif. Untuk provider lain sesuaikan host/port. MAIL_FROM harus alamat pengirim yang diizinkan akun SMTP, tanpa display name.
+
+Penerima Lahat sudah disimpan pada konfigurasi cabang. Opsional override lewat `ACADEMIC_EMAIL_LAHAT`; untuk beberapa cabang gunakan `ACADEMIC_EMAILS_JSON` berisi objek nama cabang → satu alamat email. Override JSON memiliki prioritas tertinggi. Jangan memakai alamat tujuan yang dikirim browser siswa sebagai penerima.
+
+Sesudah menyimpan: `sudo chmod 600 /etc/eduagentpct.env` dan `sudo systemctl restart eduagentpct`. Pastikan koneksi SMTP keluar diizinkan provider VPS. Uji dengan **satu pengajuan baru** milik siswa uji, lihat status di riwayat, periksa inbox/spam, dan buka tautan melalui akun akademik yang benar. Jangan menganggap pengiriman nyata berhasil hanya dari tes simulasi. Tidak ada SMTP credential di development saat implementasi, jadi pengiriman email asli belum diverifikasi.
+
+Tes memakai transport SMTP simulasi: transaksi pengajuan tetap tersimpan, pemetaan cabang, notifikasi ulang revisi, pengabaian pekerjaan usang, antrean setelah restart, retry terbatas, ketiadaan konfigurasi, serta tidak bocornya error/kredensial provider pada status siswa. Tes tidak mengirim email kepada orang lain.

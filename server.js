@@ -1,4 +1,5 @@
 import express from 'express';
+import { createMailQueue } from './mail.js';
 import { initApprovals, registerAcademicRoutes, whatsappLink, audit } from './approvals.js';
 import { BRANCHES, LETTERHEADS, getSignatureQR } from './public/branches.js';
 import { migrateBranches } from './branch-migration.js';
@@ -14,7 +15,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
-export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 'data/app.sqlite'), secure = process.env.NODE_ENV === 'production', careerOptions }  = {}) {
+export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 'data/app.sqlite'), secure = process.env.NODE_ENV === 'production', careerOptions, mailOptions }  = {}) {
   mkdirSync(resolve(databasePath, '..'), { recursive: true });
   const db = new DatabaseSync(databasePath);
   db.exec(`PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;
@@ -32,6 +33,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
   } catch (error) { db.exec('ROLLBACK'); throw error; }
   migrateBranches(db);
   initApprovals(db);
+  const notifications = createMailQueue(db, mailOptions);
   const app = express();
   app.disable('x-powered-by');
   // The deployment proxy overwrites forwarded headers and connects over loopback.
@@ -94,7 +96,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     res.clearCookie('session', { path: '/', secure, httpOnly: true, sameSite: 'strict' }).json({ ok: true });
   });
   app.get('/api/partners', (req, res) => res.json(db.prepare('SELECT * FROM partners WHERE branch=? ORDER BY name').all(req.student.branch)));
-  app.get('/api/letters', (req, res) => res.json(db.prepare('SELECT letters.*, partners.name AS partner_name FROM letters JOIN partners ON partners.id=letters.partner_id WHERE student_id=? ORDER BY letters.id DESC').all(req.student.id).map(l => ({ ...l, participants: JSON.parse(l.participants), whatsapp_url: l.status === 'pending' ? whatsappLink(l) : null }))));
+  app.get('/api/letters', (req, res) => res.json(db.prepare('SELECT letters.*, partners.name AS partner_name FROM letters JOIN partners ON partners.id=letters.partner_id WHERE student_id=? ORDER BY letters.id DESC').all(req.student.id).map(l => ({ ...l, participants: JSON.parse(l.participants), whatsapp_url: l.status === 'pending' ? whatsappLink(l) : null, email_notification: notifications.statusFor(l) }))));
   function validateLetter(req,res,next) {
     const { number, partner_id, start, end, issued, participants, request_type, category } = req.body;
     if (number) return res.status(400).json({error:'Nomor surat hanya dapat diisi oleh akademik saat menyetujui pengajuan.'});
@@ -109,7 +111,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     const token=randomBytes(24).toString('hex');db.exec('BEGIN IMMEDIATE');
     try {
       const result=db.prepare('INSERT INTO letters(student_id,partner_id,start,end,issued,participants,request_type,category,branch,review_token) VALUES(?,?,?,?,?,?,?,?,?,?)').run(req.student.id,...req.letterData,req.student.branch,token);
-      const id=Number(result.lastInsertRowid);audit(db,id,req.student,'submitted');db.exec('COMMIT');
+      const id=Number(result.lastInsertRowid);audit(db,id,req.student,'submitted');notifications.enqueue(id,1);db.exec('COMMIT');
       res.status(201).json({id,status:'pending',whatsapp_url:whatsappLink({branch:req.student.branch,review_token:token})});
     }catch(e){db.exec('ROLLBACK');throw e;}
   });
@@ -120,7 +122,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
       if(!letter){db.exec('ROLLBACK');return res.status(404).json({error:'Pengajuan tidak ditemukan.'});}
       if(letter.status!=='revision'){db.exec('ROLLBACK');return res.status(409).json({error:'Hanya pengajuan yang diminta revisi yang dapat diperbaiki.'});}
       db.prepare("UPDATE letters SET partner_id=?,start=?,end=?,issued=?,participants=?,request_type=?,category=?,status='pending',number=NULL,approved_by=NULL,approved_at=NULL,version=version+1 WHERE id=?").run(...req.letterData,letter.id);
-      audit(db,letter.id,req.student,'resubmitted');db.exec('COMMIT');res.json({id:letter.id,status:'pending'});
+      audit(db,letter.id,req.student,'resubmitted');notifications.enqueue(letter.id,letter.version+1);db.exec('COMMIT');res.json({id:letter.id,status:'pending'});
     }catch(e){db.exec('ROLLBACK');throw e;}
   });
   app.get('/api/letters/:id/pdf', (req, res) => {
@@ -178,9 +180,10 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
   app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint tidak ditemukan.' }));
   app.use(express.static(resolve(root, 'public')));
   app.use((err, req, res, next) => { console.error(err.message); if (!res.headersSent) res.status(err.status === 400 ? 400 : 500).json({ error: 'Permintaan tidak dapat diproses.' }); });
-  return { app, db };
+  return { app, db, notifications };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { app } = createApp();
+  const { app, notifications } = createApp();
+  notifications.start();
   app.listen(Number(process.env.PORT || 3000), process.env.HOST || '127.0.0.1', () => console.log('EduAgentPCT berjalan di port ' + (process.env.PORT || 3000)));
 }
