@@ -24,8 +24,8 @@ test('QR asli tetap terbaca dari PDF PKL Lahat, termasuk surat panjang; tidak di
   const headers={'Content-Type':'application/json',Cookie:registration.headers.get('set-cookie').split(';')[0]};
   for(const count of [1,10]){
    const participants=Array.from({length:count},(_,i)=>({name:i===0?'Siswa QR':`Siswa Peserta Dengan Nama Panjang Nomor ${i}`,program:'Program Profesional 1 Tahun Koding, AI, dan Bisnis Digital'}));
-   const response=await fetch(base+'/letters',{method:'POST',headers,body:JSON.stringify({request_type:'PKL',category:'Web Programing',number:`QR/${count}`,partner_id:1,start:'2026-10-01',end:'2026-11-01',issued:'2026-09-01',participants})});assert.equal(response.status,201);
-   const {id}=await response.json();const pdf=await fetch(base+`/letters/${id}/pdf`,{headers});assert.equal(pdf.status,200);
+   const response=await fetch(base+'/letters',{method:'POST',headers,body:JSON.stringify({request_type:'PKL',category:'Web Programing',partner_id:1,start:'2026-10-01',end:'2026-11-01',issued:'2026-09-01',participants})});assert.equal(response.status,201);
+   const {id}=await response.json();db.prepare("UPDATE letters SET status='approved',number=? WHERE id=?").run(`QR/${count}`,id);const pdf=await fetch(base+`/letters/${id}/pdf`,{headers});assert.equal(pdf.status,200);
    const path=join(dir,`letter-${count}.pdf`);writeFileSync(path,Buffer.from(await pdf.arrayBuffer()));
    execFileSync(process.env.PDFTOPPM_PATH || '/usr/bin/pdftoppm',['-r','200','-png',path,join(dir,`page-${count}`)],{env:{...process.env,FONTCONFIG_FILE:join(dir,'fonts.conf')}});
    const found=readdirSync(dir).filter(n=>n.startsWith(`page-${count}-`)&&n.endsWith('.png')).map(n=>decode(join(dir,n))).filter(Boolean);

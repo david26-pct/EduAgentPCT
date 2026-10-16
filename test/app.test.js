@@ -45,10 +45,11 @@ test('Alur siswa, draf, PDF, isolasi akun, dan validasi keamanan', async () => {
     assert.equal(saved.length, CATEGORIES.length * 2);
     assert.ok(saved.some(l => l.request_type === 'TCS' && l.category === 'Content Creator'));
     const draft = await (await request('/letters', letter, cookie)).json();
-    assert.equal((await request(`/letters/${draft.id}/pdf`, undefined, cookie)).status, 400);
-    const created = await request('/letters', { ...letter, number: '0294/PCT3/P/2026' }, cookie); assert.equal(created.status, 201);
+    assert.equal((await request(`/letters/${draft.id}/pdf`, undefined, cookie)).status, 403);
+    const created = await request('/letters', letter, cookie); assert.equal(created.status, 201);
     const { id } = await created.json();
-    assert.equal((await request('/letters', { ...letter, number: '0294/PCT3/P/2026' }, cookie)).status, 409);
+    db.prepare("UPDATE letters SET status='approved',number=? WHERE id=?").run('0294/PCT3/P/2026',id);
+    assert.equal((await request('/letters', { ...letter, number: '0294/PCT3/P/2026' }, cookie)).status, 400);
     const pdf = await request(`/letters/${id}/pdf`, undefined, cookie);
     assert.equal(pdf.status, 200); assert.match(pdf.headers.get('content-type'), /application\/pdf/);
     assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 4).toString(), '%PDF');

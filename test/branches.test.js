@@ -40,12 +40,14 @@ test('Cabang mengisolasi login, mitra, rekomendasi, dan surat dengan NIS/nomor s
   assert.equal((await req('/login',{...onlyLahat,branch:'Prabumulih'})).status,401);
   const partners=db.prepare('SELECT * FROM partners').all();
   const lahat=partners.find(p=>p.branch==='Lahat'),opi=partners.find(p=>p.branch==='Palembang OPI');
-  const letter={number:'SAMA/001',request_type:'PKL',category:'UI/UX Design',partner_id:lahat.id,start:'2026-10-01',end:'2026-11-01',issued:'2026-09-01',participants:[{name:account.name,program:'Program Profesional 1 Tahun'}]};
+  const letter={request_type:'PKL',category:'UI/UX Design',partner_id:lahat.id,start:'2026-10-01',end:'2026-11-01',issued:'2026-09-01',participants:[{name:account.name,program:'Program Profesional 1 Tahun'}]};
   assert.equal((await req('/letters',letter,credentials['Palembang OPI'])).status,400);
   const a=await req('/letters',letter,credentials.Lahat);assert.equal(a.status,201);const id=(await a.json()).id;
+  db.prepare("UPDATE letters SET status='approved',number='SAMA/001' WHERE id=?").run(id);
   assert.equal((await req('/letters',{...letter,partner_id:opi.id},credentials['Palembang OPI'])).status,201);
   assert.equal((await req(`/letters/${id}/pdf`,undefined,credentials['Palembang OPI'])).status,404);
   const opiLetters=await(await req('/letters',undefined,credentials['Palembang OPI'])).json();assert.equal(opiLetters.length,1);
+  db.prepare("UPDATE letters SET status='approved',number='SAMA/001' WHERE id=?").run(opiLetters[0].id);
   assert.equal((await req(`/letters/${opiLetters[0].id}/pdf`,undefined,credentials['Palembang OPI'])).status,409);
   assert.equal((await(await req('/branch',undefined,credentials['Palembang OPI'])).json()).letterhead,null);
   assert.equal((await req(`/letters/${id}/pdf`,undefined,credentials.Lahat)).status,200);

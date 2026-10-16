@@ -12,8 +12,8 @@ Versi awal portal siswa LKP PalComTech untuk membuat surat permohonan PKL. Saat 
 - Daftar mandiri dengan nama, NIS unik (3–30 angka), dan password minimal 10 karakter.
 - Login menggunakan nama, NIS, dan password. Hash password scrypt, cookie sesi HttpOnly/SameSite, masa berlaku 7 hari, pembatasan percobaan login, logout yang mencabut sesi.
 - Ringkasan siswa, daftar mitra, satu hingga sepuluh peserta dalam surat, tanggal PKL, dan riwayat surat per akun.
-- Simpan draf tanpa nomor. Tombol Lengkapi menyalin draf ke formulir; penyimpanan berikutnya membuat surat baru dan mempertahankan draf lama.
-- Pratinjau isi dan unduhan PDF A4. Nomor dari akademik wajib ada sebelum PDF bisa diunduh; nomor ganda ditolak. Aplikasi tidak mengeluarkan nomor otomatis.
+- Pengajuan tanpa nomor, persetujuan akademik per cabang, revisi pada pengajuan yang sama, dan tombol WhatsApp dengan tautan pemeriksaan.
+- Pratinjau pengajuan tanpa QR sebelum disetujui. PDF A4 dan QR hanya tersedia setelah persetujuan serta nomor yang diisi akademik. Nomor ganda per cabang ditolak.
 - Nama pimpinan tercetak, ruang tanda tangan/stempel kosong. Surat dicetak siswa dan dibawa ke akademik atau pimpinan.
 
 ## Menjalankan
@@ -71,7 +71,7 @@ Impor menambah mitra, mempertahankan data lama, dan melewatkan nama yang telah a
 npm test
 ```
 
-Tes memakai database sementara yang dihapus sesudahnya, bukan database pengembangan. Pengujian integrasi mencakup backend dan browser: pendaftaran/login, validasi tanggal, draf tanpa nomor, nomor duplikat, isolasi akses antar-akun, logout, pratinjau beberapa peserta, unduhan PDF dan pemeriksaan teksnya, ukuran layar desktop dan ponsel, kedua jenis permohonan dengan seluruh kategori, dan migrasi database lama yang dijalankan ulang.
+Tes memakai database sementara yang dihapus sesudahnya, bukan database pengembangan. Pengujian integrasi mencakup backend dan browser: pendaftaran/login, validasi tanggal, pengajuan tanpa nomor, persetujuan/revisi akademik, nomor duplikat, isolasi akses antar-akun, logout, pratinjau beberapa peserta, unduhan PDF dan pemeriksaan teksnya, ukuran layar desktop dan ponsel, kedua jenis permohonan dengan seluruh kategori, dan migrasi database lama yang dijalankan ulang.
 
 Tes browser membutuhkan Chromium di `/usr/bin/chromium` (atau variabel `CHROMIUM_PATH`) dan utilitas `pdftotext`. Jika belum tersedia, jalankan tes backend terpisah dengan `node --test test/app.test.js`; ini tidak menggantikan tes browser. Tidak perlu memasang Flutter untuk menjalankan versi web ini.
 
@@ -80,7 +80,7 @@ Tes browser membutuhkan Chromium di `/usr/bin/chromium` (atau variabel `CHROMIUM
 - Belum ada penautan/login Google. Tampilan menyebutnya belum tersedia; tidak ada tombol login palsu. Diperlukan proyek OAuth Google, domain HTTPS, dan implementasi callback serta penautan identitas yang aman.
 - Belum ada verifikasi NIS terhadap daftar siswa akademik. Validasi sekarang hanya memeriksa format dan keunikan. Nomor surat yang diketik juga belum diverifikasi ke arsip akademik.
 - Logo pada halaman login, sidebar, pratinjau, dan PDF berasal dari aset kop asli dalam `Contoh Format.docx` (`public/assets/palcomtech-letterhead.jpg`). CSS dan layout PDF menampilkan area logo dari aset tersebut tanpa mengubah file gambar. Isi surat mengikuti contoh, tetapi kesamaan tata letak lengkap dengan Word belum diterapkan. Identitas pimpinan dan kontak berasal dari contoh; akademik perlu mengonfirmasi sebelum dipakai resmi.
-- Belum ada reset password, panel akademik, atau audit administratif. Data mitra dikelola lewat perintah impor lokal.
+- Belum ada reset password. Portal akademik dan audit pengajuan tersedia; data mitra masih dikelola lewat perintah impor lokal.
 - Database awal SQLite, bukan PostgreSQL yang direncanakan untuk pengembangan produksi. Migrasi perlu dilakukan terpisah; kapasitas VPS belum diuji.
 - Belum dipasang ke VPS Sumopod dan belum mengubah DNS `eduagentpct.my.id`. Rencana backend produksi: `api.eduagentpct.my.id`, HTTPS lewat reverse proxy, layanan non-root, backup di luar VPS, dan pengujian akses sebelum peluncuran. Frontend web dan API saat ini harus dilayani dari origin yang sama.
 - Build native Flutter belum tersedia. Percobaan memasang SDK resmi terhalang respons proxy 403 ke `storage.googleapis.com`. Setelah akses diizinkan, lanjutkan pemasangan SDK dan implementasi klien Flutter; build iOS/macOS memerlukan macOS/Xcode.
@@ -162,8 +162,31 @@ Contoh uji: masuk cabang Lahat, buka Keahlian & Karier, pilih PKL + UI/UX Design
 
 `public/assets/signature-lahat.png` adalah gambar asli `qr.png` dari arsip `qr.rar` yang diberikan pemilik proyek. File disalin tanpa mengubah piksel; hash SHA256-nya `27a33fba18decb088fe34b09f1cede9390cd6ea4fd1b1f2c6314659ecb3f86c5`.
 
-QR tampil di pratinjau dan PDF PKL cabang Lahat, di bawah tulisan Pimpinan dan sebelum nama Abdul Rajab, S.E. Surat TCS dan cabang lain tidak memakai gambar ini. PDF menampilkan gambar berukuran 100 pt (sekitar 35 mm), mempertahankan seluruh gambar dan rasio aslinya; blok tanda tangan dipindahkan ke halaman berikutnya bila ruang tidak cukup. Unduhan ulang PDF surat lama PKL Lahat mengikuti template terbaru, termasuk QR ini.
+QR tampil di pratinjau dan PDF PKL cabang Lahat yang sudah disetujui akademik, di bawah tulisan Pimpinan dan sebelum nama Abdul Rajab, S.E. Surat TCS dan cabang lain tidak memakai gambar ini. PDF menampilkan gambar berukuran 100 pt (sekitar 35 mm), mempertahankan seluruh gambar dan rasio aslinya; blok tanda tangan dipindahkan ke halaman berikutnya bila ruang tidak cukup. Unduhan ulang PDF surat lama PKL Lahat mengikuti template terbaru, termasuk QR ini, setelah persetujuan akademik.
 
 Ini penempatan gambar QR yang diberikan pengguna, bukan implementasi tanda tangan kriptografis atau verifikasi keaslian surat. Tujuan QR tidak dibuka otomatis oleh aplikasi. Ketentuan stempel tetap mengikuti akademik.
 
 Tes mendekode QR asli dan hasil raster PDF untuk surat satu dan sepuluh peserta, lalu membandingkan isinya tanpa mencetak isi QR ke log. Uji raster membutuhkan `pdftoppm` (`/usr/bin/pdftoppm`, dapat diatur lewat `PDFTOPPM_PATH`), di samping prasyarat tes lain.
+
+
+## Persetujuan akademik dan WhatsApp
+
+Alur saat ini menggantikan penerbitan mandiri sebelumnya: siswa mengajukan tanpa nomor → `pending` → akademik meninjau → `approved` dengan nomor surat, atau `revision` dengan catatan wajib. Pengajuan yang direvisi diedit dan dikirim ulang pada ID/tautan yang sama. Siswa tidak dapat mengedit saat menunggu atau setelah disetujui. PDF server selalu memeriksa pemilik akun, status approved, dan nomor; QR tidak muncul pada pratinjau pending/revisi. Persetujuan berlaku untuk PKL dan TCS, dengan QR tetap hanya PKL Lahat.
+
+Tombol **Kirim ke WhatsApp Akademik** membuka `wa.me` dengan teks **hanya URL** ke `/academic.html?request=<token-acak>`. Tidak ada pesan yang dikirim server dan aplikasi tidak mengklaim pesan terkirim/terbaca. Siswa harus menekan Kirim di WhatsApp. Nomor Lahat sementara adalah kontak akademik pada contoh Word, `0823-73725066`, disimpan sebagai `academic_whatsapp` pada `public/branches.js`. Cabang tanpa nomor WhatsApp menampilkan pesan untuk menghubungi akademik; antrean tetap tersedia di portal cabang.
+
+Portal `/academic.html` mempunyai login **terpisah** dari siswa, akun hanya dapat dibuat operator, tidak dapat didaftarkan lewat formulir siswa. Membuka atau meneruskan tautan tidak menyetujui surat dan tidak membuka data tanpa autentikasi akademik cabang yang sama. Akademik dapat melihat antrean cabang, detail peserta/periode/kategori, catatan, dan riwayat tindakan. Keputusan menggunakan transaksi dan pemeriksaan versi untuk menolak persetujuan dari halaman usang atau nomor duplikat. Waktu, identitas pemeriksa, nomor, dan catatan dicatat pada audit. Session akademik berlaku 8 jam dan dicabut saat logout. Akun bersama sebaiknya diganti akun individual per petugas agar audit jelas.
+
+**Pembuatan akun akademik pertama di VPS (sekali saja, sesudah deploy):**
+
+```sh
+sudo -u eduagentpct env DB_PATH=/var/lib/eduagentpct/app.sqlite /opt/node-v24.19.0/bin/node /opt/eduagentpct/current/scripts/create-academic.js --branch Lahat --username akademik.lahat --name "Akademik Lahat"
+```
+
+Perintah meminta password 12–128 karakter dua kali melalui terminal tanpa echo. Tidak ada password default, password tidak diterima lewat argumen/environment, dan hanya hash scrypt disimpan. Jangan kirim password ke chat atau Git. Username yang sudah ada tidak ditimpa. Untuk cabang lain, gunakan nama cabang persis dalam tanda kutip dan username petugas yang sesuai. Akun siswa biasa tidak dapat memberikan dirinya peran akademik. Jalankan sebagai service user agar kepemilikan SQLite/WAL tetap benar.
+
+`PUBLIC_APP_URL` opsional menentukan origin HTTPS pada tautan; default `https://eduagentpct.my.id`. Jangan membangun URL akademik dari header Host yang dikirim klien. Status di akun siswa dimuat ulang saat tab mendapat fokus, setiap 30 detik selama terlihat, atau melalui tombol Perbarui status. Tidak ada notifikasi WhatsApp balik otomatis atau pengiriman PDF melalui WhatsApp.
+
+**Migrasi surat lama:** semua surat yang belum mempunyai status persetujuan menjadi pending, termasuk surat yang sebelumnya diberi nomor siswa. Data/nomor lama dipertahankan untuk ditinjau, tidak dianggap otomatis sah. Akademik harus memeriksa dan menyetujui sebelum unduhan berikutnya; file yang pernah diunduh sebelumnya tidak dapat dicabut dari perangkat pengguna. Backup dibuat installer sebelum migrasi. Tidak ada akun akademik produksi yang dibuat otomatis saat deploy; buat akun pertama sebelum meminta siswa mengajukan.
+
+Pengujian mencakup E2E dua browser siswa/akademik: ajukan → tautan WhatsApp tanpa mengirim pesan → login akademik → revisi → siswa memperbaiki pada ID sama → persetujuan dan nomor → unduh PDF. Tes API memeriksa akses lintas-cabang, upaya memalsukan status/nomor, persetujuan usang, audit, logout, dan nomor ganda. Pengiriman pesan WhatsApp nyata tidak diuji dan tidak dilakukan.

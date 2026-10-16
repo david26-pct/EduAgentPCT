@@ -19,7 +19,7 @@ Instalasi remote belum dijalankan. SSH ke port 22 IP yang diberikan menolak kone
 Paket dapat dibangun dari checkout menggunakan:
 
 ```sh
-tar -czf /workspace/artifacts/eduagentpct-deploy.tar.gz package.json package-lock.json server.js career.js branch-migration.js public deploy scripts
+tar -czf /workspace/artifacts/eduagentpct-deploy.tar.gz package.json package-lock.json server.js career.js branch-migration.js approvals.js public deploy scripts
 ```
 
 Transfer paket ke home pengguna VPS melalui SCP dengan port SSH yang dikonfirmasi. Di VPS, ekstrak ke direktori kosong, baca skripnya, lalu jalankan `sudo bash deploy/install-vps.sh` dari direktori hasil ekstraksi.
@@ -39,3 +39,5 @@ Penerbitan sertifikat menggunakan akun ACME tanpa email. Tambahkan email adminis
 - Rollback: pilih release lama di `/opt/eduagentpct/releases`, arahkan symlink `current` kepadanya, lalu restart service. Jangan menimpa database dengan backup lama tanpa meninjau kehilangan data baru.
 
 Untuk produksi penuh masih diperlukan verifikasi NIS, kebijakan privasi, reset password, dan pemeriksaan identitas/kop surat oleh akademik. Aplikasi saat ini belum mengecek nomor surat manual terhadap arsip akademik.
+
+Sesudah memasang versi approval, buat akun akademik melalui perintah interaktif pada README utama. Akun tidak dibuat otomatis. Pengajuan/surat lama menjadi menunggu pemeriksaan dan tidak bisa diunduh sebelum disetujui; informasikan perubahan alur kepada akademik.

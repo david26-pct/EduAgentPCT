@@ -33,7 +33,7 @@ fi
 export PATH="/opt/node-v$NODE_VERSION/bin:$PATH"
 RELEASE="$APP_DIR/releases/$(date -u +%Y%m%dT%H%M%SZ)-$$"
 install -d -m 0755 "$RELEASE"
-cp "$SOURCE_DIR/server.js" "$SOURCE_DIR/career.js" "$SOURCE_DIR/branch-migration.js" "$SOURCE_DIR/package.json" "$SOURCE_DIR/package-lock.json" "$RELEASE/"
+cp "$SOURCE_DIR/server.js" "$SOURCE_DIR/career.js" "$SOURCE_DIR/branch-migration.js" "$SOURCE_DIR/approvals.js" "$SOURCE_DIR/package.json" "$SOURCE_DIR/package-lock.json" "$RELEASE/"
 cp -R "$SOURCE_DIR/public" "$SOURCE_DIR/scripts" "$RELEASE/"
 find "$RELEASE" -type d -exec chmod 0755 {} +
 find "$RELEASE" -type f -exec chmod 0644 {} +

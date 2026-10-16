@@ -1,4 +1,5 @@
 import express from 'express';
+import { initApprovals, registerAcademicRoutes, whatsappLink, audit } from './approvals.js';
 import { BRANCHES, LETTERHEADS, getSignatureQR } from './public/branches.js';
 import { migrateBranches } from './branch-migration.js';
 import { registerCareerRoutes } from './career.js';
@@ -30,6 +31,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }
   migrateBranches(db);
+  initApprovals(db);
   const app = express();
   app.disable('x-powered-by');
   // The deployment proxy overwrites forwarded headers and connects over loopback.
@@ -75,6 +77,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     if (!student || student.name.toLocaleLowerCase('id') !== name.trim().toLocaleLowerCase('id') || !timingSafeEqual(hash, Buffer.from(student.hash, 'hex'))) return res.status(401).json({ error: 'Nama, NIS, atau password tidak sesuai.' });
     session(req, res, student);
   });
+  registerAcademicRoutes(app, db, secure);
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
   app.use('/api', (req, res, next) => {
     const token = req.headers.cookie?.split(';').map(x => x.trim()).find(x => x.startsWith('session='))?.slice(8);
@@ -91,26 +94,39 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     res.clearCookie('session', { path: '/', secure, httpOnly: true, sameSite: 'strict' }).json({ ok: true });
   });
   app.get('/api/partners', (req, res) => res.json(db.prepare('SELECT * FROM partners WHERE branch=? ORDER BY name').all(req.student.branch)));
-  app.get('/api/letters', (req, res) => res.json(db.prepare('SELECT letters.*, partners.name AS partner_name FROM letters JOIN partners ON partners.id=letters.partner_id WHERE student_id=? ORDER BY letters.id DESC').all(req.student.id).map(l => ({ ...l, participants: JSON.parse(l.participants) }))));
-  app.post('/api/letters', (req, res) => {
+  app.get('/api/letters', (req, res) => res.json(db.prepare('SELECT letters.*, partners.name AS partner_name FROM letters JOIN partners ON partners.id=letters.partner_id WHERE student_id=? ORDER BY letters.id DESC').all(req.student.id).map(l => ({ ...l, participants: JSON.parse(l.participants), whatsapp_url: l.status === 'pending' ? whatsappLink(l) : null }))));
+  function validateLetter(req,res,next) {
     const { number, partner_id, start, end, issued, participants, request_type, category } = req.body;
-    if (!Object.hasOwn(REQUEST_TYPES, request_type || '') || !CATEGORIES.includes(category)) return res.status(400).json({ error: 'Pilih jenis permohonan PKL atau TCS dan kategori yang tersedia.' });
-    const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
-    if ((number && !text(number, 80)) || !date(start) || !date(end) || !date(issued) || start > end || !Array.isArray(participants) || participants.length < 1 || participants.length > 10 || participants.some(p => !text(p.name, 100) || !text(p.program, 150))) return res.status(400).json({ error: 'Periksa nomor surat, tanggal, dan data peserta (maksimal 10 siswa).' });
-    if (!participants.some(p => p.name.trim().toLocaleLowerCase('id') === req.student.name.toLocaleLowerCase('id'))) return res.status(400).json({ error: 'Nama pemilik akun wajib tercantum dalam peserta.' });
-    if (!db.prepare('SELECT id FROM partners WHERE id=? AND branch=?').get(partner_id, req.student.branch)) return res.status(400).json({ error: 'Pilih mitra resmi dari daftar.' });
+    if (number) return res.status(400).json({error:'Nomor surat hanya dapat diisi oleh akademik saat menyetujui pengajuan.'});
+    if (!Object.hasOwn(REQUEST_TYPES,request_type || '') || !CATEGORIES.includes(category)) return res.status(400).json({error:'Pilih jenis dan kategori yang tersedia.'});
+    const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10)===v;
+    if (!date(start)||!date(end)||!date(issued)||start>end||!Array.isArray(participants)||!participants.length||participants.length>10||participants.some(p=>!text(p.name,100)||!text(p.program,150))) return res.status(400).json({error:'Periksa tanggal dan data peserta (maksimal 10 siswa).'});
+    if (!participants.some(p=>p.name.trim().toLocaleLowerCase('id')===req.student.name.toLocaleLowerCase('id'))) return res.status(400).json({error:'Nama pemilik akun wajib tercantum dalam peserta.'});
+    if (!db.prepare('SELECT id FROM partners WHERE id=? AND branch=?').get(partner_id,req.student.branch)) return res.status(400).json({error:'Pilih mitra resmi cabangmu.'});
+    req.letterData=[partner_id,start,end,issued,JSON.stringify(participants.map(p=>({name:p.name.trim(),program:p.program.trim()}))),request_type,category];next();
+  }
+  app.post('/api/letters',validateLetter,(req,res)=>{
+    const token=randomBytes(24).toString('hex');db.exec('BEGIN IMMEDIATE');
     try {
-      const result = db.prepare('INSERT INTO letters(student_id,number,partner_id,start,end,issued,participants,request_type,category,branch) VALUES(?,?,?,?,?,?,?,?,?,?)').run(req.student.id, number?.trim() || null, partner_id, start, end, issued, JSON.stringify(participants.map(p => ({ name: p.name.trim(), program: p.program.trim() }))), request_type, category, req.student.branch);
-      res.status(201).json({ id: Number(result.lastInsertRowid) });
-    } catch (error) {
-      if (String(error).includes('UNIQUE')) return res.status(409).json({ error: 'Nomor surat sudah digunakan. Konfirmasikan kepada akademik.' });
-      throw error;
-    }
+      const result=db.prepare('INSERT INTO letters(student_id,partner_id,start,end,issued,participants,request_type,category,branch,review_token) VALUES(?,?,?,?,?,?,?,?,?,?)').run(req.student.id,...req.letterData,req.student.branch,token);
+      const id=Number(result.lastInsertRowid);audit(db,id,req.student,'submitted');db.exec('COMMIT');
+      res.status(201).json({id,status:'pending',whatsapp_url:whatsappLink({branch:req.student.branch,review_token:token})});
+    }catch(e){db.exec('ROLLBACK');throw e;}
+  });
+  app.put('/api/letters/:id',validateLetter,(req,res)=>{
+    db.exec('BEGIN IMMEDIATE');
+    try{
+      const letter=db.prepare('SELECT * FROM letters WHERE id=? AND student_id=?').get(req.params.id,req.student.id);
+      if(!letter){db.exec('ROLLBACK');return res.status(404).json({error:'Pengajuan tidak ditemukan.'});}
+      if(letter.status!=='revision'){db.exec('ROLLBACK');return res.status(409).json({error:'Hanya pengajuan yang diminta revisi yang dapat diperbaiki.'});}
+      db.prepare("UPDATE letters SET partner_id=?,start=?,end=?,issued=?,participants=?,request_type=?,category=?,status='pending',number=NULL,approved_by=NULL,approved_at=NULL,version=version+1 WHERE id=?").run(...req.letterData,letter.id);
+      audit(db,letter.id,req.student,'resubmitted');db.exec('COMMIT');res.json({id:letter.id,status:'pending'});
+    }catch(e){db.exec('ROLLBACK');throw e;}
   });
   app.get('/api/letters/:id/pdf', (req, res) => {
     const l = db.prepare('SELECT letters.*, partners.name AS partner_name, partners.recipient FROM letters JOIN partners ON partners.id=letters.partner_id WHERE letters.id=? AND student_id=?').get(req.params.id, req.student.id);
     if (!l) return res.status(404).json({ error: 'Surat tidak ditemukan.' });
-    if (!l.number) return res.status(400).json({ error: 'Draf belum memiliki nomor dari akademik. Buat surat lengkap setelah nomor diperoleh.' });
+    if (l.status !== 'approved' || !l.number) return res.status(403).json({ error: 'PDF hanya tersedia setelah akademik menyetujui dan mengisi nomor surat.' });
     const head = LETTERHEADS[req.student.branch];
     if (!head) return res.status(409).json({ error: 'Identitas kop dan pimpinan cabang ini belum dikonfigurasi. Hubungi akademik.' });
     const requestName = REQUEST_TYPES[l.request_type];

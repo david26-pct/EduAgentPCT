@@ -4,7 +4,7 @@ const guide = document.querySelector('#chatbot-guide');
 const guides = {
   category: 'Pilih kategori sesuai kemampuan dan minatmu: Internet of Things, Web Programing, UI/UX Design, Desain Grafis, Content Creator, atau Digital Marekting. Jika masih ragu, konsultasikan dengan akademik sebelum mengajukan surat.',
   partner: 'Daftar mitra sudah tersedia di formulir. Rekomendasi berdasarkan keahlian belum aktif karena profil pekerjaan dan kategori tiap mitra belum dilengkapi. Konfirmasikan tugas, pembimbing, dan penerimaan PKL/TCS kepada akademik atau mitra; nama perusahaan saja belum cukup untuk menentukan kecocokan.',
-  letter: 'Minta nomor surat dari akademik, pilih PKL atau TCS beserta kategorinya, pilih mitra, isi periode dan peserta, lalu periksa pratinjau. Simpan dan unduh PDF untuk dicetak serta dimintakan tanda tangan dan stempel. Tanpa nomor surat, kamu hanya dapat menyimpan draf.',
+  letter: 'Pilih PKL atau TCS beserta kategori, mitra, periode, dan peserta. Ajukan lalu tekan Kirim ke WhatsApp Akademik pada riwayat. Akademik memeriksa dan mengisi nomor saat menyetujui. PDF hanya tersedia setelah disetujui. Jika diminta revisi, perbaiki dari riwayat dan ajukan ulang.',
 };
 toggle.addEventListener('click', () => panel.showModal());
 document.querySelector('#chatbot-close').addEventListener('click', () => panel.close());
