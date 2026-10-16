@@ -12,6 +12,7 @@ db.exec('BEGIN');
 try {
   for (const { name, branch = 'Lahat', ...profile } of rows) {
     const partner = db.prepare('SELECT id FROM partners WHERE name=? AND branch=?').get(name.trim(), branch);
+    if (partner && process.argv.includes('--only-missing') && db.prepare('SELECT partner_id FROM partner_profiles WHERE partner_id=?').get(partner.id)) continue;
     if (!partner) throw Error(`Nama mitra belum terdaftar: ${name}`);
     db.prepare('INSERT INTO partner_profiles VALUES(?,?) ON CONFLICT(partner_id) DO UPDATE SET data=excluded.data').run(partner.id, JSON.stringify({ ...profile, skills: [...new Set(profile.skills.map(s => s.trim().toLocaleLowerCase('id')))] }));
   }

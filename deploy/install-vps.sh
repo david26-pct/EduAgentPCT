@@ -51,6 +51,12 @@ if ! runuser -u eduagentpct -- env DB_PATH="$STATE_DIR/app.sqlite" "/opt/node-v$
   echo 'Migration/import failed; deployment stopped. Inspect logs before retrying.' >&2
   exit 1
 fi
+# Seed the owner-supplied Career Match workbook once, without replacing later operator edits.
+if ! runuser -u eduagentpct -- env DB_PATH="$STATE_DIR/app.sqlite" "/opt/node-v$NODE_VERSION/bin/node" "$RELEASE/scripts/import-partner-profiles.js" "$RELEASE/scripts/career-partners-lahat.json" --only-missing; then
+  systemctl start eduagentpct 2>/dev/null || true
+  echo 'Career profile import failed; deployment stopped. Inspect logs before retrying.' >&2
+  exit 1
+fi
 # Keep any existing current release for operator rollback; never remove the database.
 ln -s "$RELEASE" "$APP_DIR/current.next"
 mv -Tf "$APP_DIR/current.next" "$APP_DIR/current"

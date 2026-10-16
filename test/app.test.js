@@ -42,7 +42,7 @@ test('Alur siswa, draf, PDF, isolasi akun, dan validasi keamanan', async () => {
       }
     }
     const saved = await (await request('/letters', undefined, cookie)).json();
-    assert.equal(saved.length, 12);
+    assert.equal(saved.length, CATEGORIES.length * 2);
     assert.ok(saved.some(l => l.request_type === 'TCS' && l.category === 'Content Creator'));
     const draft = await (await request('/letters', letter, cookie)).json();
     assert.equal((await request(`/letters/${draft.id}/pdf`, undefined, cookie)).status, 400);

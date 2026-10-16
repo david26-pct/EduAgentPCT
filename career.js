@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { CATEGORIES, REQUEST_TYPES } from './public/request-options.js';
 
+const normalizeLocation = value => normalize(value).replace(/^kota\s+/, '');
 const normalize = value => value.trim().toLocaleLowerCase('id');
 export function registerCareerRoutes(app, db, { aiKey = process.env.AI_API_KEY, aiModel = process.env.AI_MODEL || 'gpt-4.1-mini', aiFetch = fetch } = {}) {
   db.exec(`CREATE TABLE IF NOT EXISTS skill_profiles(student_id INTEGER PRIMARY KEY REFERENCES students(id), data TEXT NOT NULL);
@@ -34,7 +35,7 @@ export function registerCareerRoutes(app, db, { aiKey = process.env.AI_API_KEY, 
     const matches = eligible.map(p => {
       const overlap = p.skills.filter(s => profile.skills.includes(normalize(s)));
       const gap = p.skills.filter(s => !profile.skills.includes(normalize(s)));
-      const locationMatch = Boolean(profile.location && normalize(profile.location) === normalize(p.location));
+      const locationMatch = Boolean(profile.location && normalizeLocation(profile.location) === normalizeLocation(p.location));
       return { id: p.id, name: p.name, location: p.location, description: p.description, acceptance: p.acceptance, overlap, gap, score: 60 + (p.skills.length ? Math.round(30 * overlap.length / p.skills.length) : 0) + (locationMatch ? 10 : 0), reason: `Kategori ${profile.category} dan jenis ${profile.request_type} sesuai profil mitra. ${overlap.length} keahlian cocok${locationMatch ? '; lokasi sesuai preferensi' : ''}.` };
     }).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'id')).slice(0, 5);
     res.json({ method: 'rules', matches, verified_profiles: all.filter(p => JSON.parse(p.data).verified === true).length, note: 'Pencocokan berbobot berdasarkan profil mitra terverifikasi, bukan prediksi AI atau jaminan diterima. Skor adalah poin dari 100. Konfirmasikan penerimaan kepada akademik/mitra.' });
@@ -52,6 +53,7 @@ export function registerCareerRoutes(app, db, { aiKey = process.env.AI_API_KEY, 
       'UI/UX Design': 'Petakan alur pengguna, buat wireframe dan prototipe Figma, lalu uji dengan beberapa pengguna.',
       'Desain Grafis': 'Susun moodboard dan buat tiga materi visual dengan hierarki, tipografi, dan warna yang konsisten.',
       'Content Creator': 'Buat kalender konten, naskah singkat, dan satu video; evaluasi kejelasan pesan serta kualitas audio.',
+      'Teknisi dan Jaringan': 'Latih diagnosis perangkat dan koneksi jaringan sederhana, dokumentasikan langkah pemeriksaan, serta pelajari keselamatan kerja dan perlindungan data.',
       'Digital Marekting': 'Susun profil audiens, rencana kampanye, contoh materi promosi, dan metrik evaluasinya.',
     };
     let content = `Rencana dasar 14 hari — ${profile.category}\n\nHari 1–3: Tinjau dasar kategori dan inventarisasi kemampuanmu: ${profile.skills.join(', ')}. Tentukan satu target belajar.\n\nHari 4–7: ${localActions[profile.category]}\n\nHari 8–10: Minta masukan dari pengajar atau teman, perbaiki hasil, dan dokumentasikan prosesnya.\n\nHari 11–12: Siapkan portofolio dan CV dengan pengalaman yang benar-benar kamu miliki.\n\nHari 13–14: Konfirmasikan tugas dan pembimbing ke mitra/akademik, lalu siapkan surat ${profile.request_type} dengan nomor dari akademik.\n\nIni panduan berbasis template, bukan hasil AI. Sesuaikan jadwal dengan arahan pengajar.`;

@@ -9,4 +9,5 @@ export const CATEGORIES = [
   'Desain Grafis',
   'Content Creator',
   'Digital Marekting',
+  'Teknisi dan Jaringan',
 ];

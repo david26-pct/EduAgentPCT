@@ -140,3 +140,20 @@ Migrasi otomatis mempertahankan ID akun, sesi, surat, profil keahlian, dan renca
 Daftar 61 mitra saat ini khusus Lahat. Cabang lain awalnya kosong sampai daftar resminya dimasukkan. Untuk impor mitra atau profil pekerjaan, sertakan `"branch": "Palembang Sudirman"` (atau nama persis cabang lain) pada setiap objek JSON. Format lama tanpa `branch` tetap dianggap Lahat demi kompatibilitas. Nama mitra sama boleh muncul di beberapa cabang, masing-masing mempunyai ID sendiri. Profil pekerjaan diperbarui berdasarkan pasangan nama dan cabang.
 
 Kop/pimpinan yang diberikan sejauh ini hanya Lahat. `public/branches.js` memuat data surat per cabang; tambahkan identitas resmi setelah dikonfirmasi. PDF cabang tanpa identitas surat ditolak dengan pesan jelas, dan pratinjau tidak memakai nama pimpinan/kontak Lahat sebagai pengganti. Daftar cabang bukan verifikasi bahwa pendaftar adalah siswa cabang tersebut; pencocokan NIS ke data akademik tetap belum tersedia.
+
+## Profil Career Match dari Excel sementara
+
+`scripts/career-partners-lahat.json` berisi lima profil dari file pengguna `Daftar Mitra Perusahaan untuk PKL.xlsx`: Caesar Advertising, Notaris Laogita, Badan Pusat Statistik, Badan Zakat Nasional, dan Jemmy Computer. Semuanya cabang Lahat dan menerima PKL saja. Status penerimaan/verifikasi mengikuti isian pengguna; tidak ada verifikasi eksternal yang dilakukan aplikasi. Kategori, keahlian, lokasi dan tugas dipertahankan dari workbook. Header “Contoh pengisian” pada workbook diperlakukan sebagai nama kolom; pengguna secara eksplisit meminta isi lima lembar dipakai untuk uji Career Match.
+
+Konversi dapat diulang dengan `python3 scripts/convert-career-xlsx.py /path/input.xlsx /path/output.json` tanpa library tambahan. Formula tidak dievaluasi dan ditolak. Ejaan Web Programming dan Digital Marketing dipetakan ke ID kategori lama Web Programing dan Digital Marekting. Kategori Teknisi dan Jaringan ditambahkan berdasarkan isian Jemmy Computer. Lokasi “Kota Lahat” dan “Lahat” kini dianggap sama dengan mengabaikan awalan “Kota”; tidak ada pencarian jarak geografis.
+
+Impor development:
+
+```sh
+npm run partners:import -- scripts/partners-palcomtech.json
+node scripts/import-partner-profiles.js scripts/career-partners-lahat.json --only-missing
+```
+
+Installer VPS menjalankan dua impor tersebut otomatis setelah backup/migrasi dan sebelum service dinyalakan ulang. Opsi `--only-missing` tidak menimpa metadata yang telah diedit akademik. Untuk memperbarui profil yang sudah ada secara sengaja, gunakan perintah impor tanpa opsi tersebut, setelah meninjau perubahannya. Cabang lain dan TCS tidak diberi profil hasil tebakan.
+
+Contoh uji: masuk cabang Lahat, buka Keahlian & Karier, pilih PKL + UI/UX Design, isi keahlian Figma dan lokasi Lahat, simpan, lalu cari mitra. Notaris Laogita akan muncul berdasarkan data ini. PKL + Web Programing menampilkan Badan Pusat Statistik. Rekomendasi tetap bukan jaminan penerimaan; konfirmasikan kembali kepada mitra.

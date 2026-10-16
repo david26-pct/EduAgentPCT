@@ -1,0 +1,116 @@
+[
+  {
+    "branch": "Lahat",
+    "name": "Caesar Advertising",
+    "request_types": [
+      "PKL"
+    ],
+    "categories": [
+      "Desain Grafis",
+      "Content Creator"
+    ],
+    "skills": [
+      "Photoshop",
+      "Canva",
+      "Capcut"
+    ],
+    "location": "Kota Lahat",
+    "description": "Membuat Desain, Membantu Pekerjaan Percetakan, membuat video Iklan promosi",
+    "acceptance": "open",
+    "verified": true,
+    "source": "Daftar Mitra Perusahaan untuk PKL.xlsx"
+  },
+  {
+    "branch": "Lahat",
+    "name": "Notaris Laogita",
+    "request_types": [
+      "PKL"
+    ],
+    "categories": [
+      "Desain Grafis",
+      "Content Creator",
+      "UI/UX Design"
+    ],
+    "skills": [
+      "Photoshop",
+      "Canva",
+      "Capcut",
+      "Figma"
+    ],
+    "location": "Kota Lahat",
+    "description": "Membuat Desain, Membantu Pekerjaan Admin Notaris, membuat video company profile, dan prototype aplikasi untuk notaris",
+    "acceptance": "open",
+    "verified": true,
+    "source": "Daftar Mitra Perusahaan untuk PKL.xlsx"
+  },
+  {
+    "branch": "Lahat",
+    "name": "Badan Pusat Statistik",
+    "request_types": [
+      "PKL"
+    ],
+    "categories": [
+      "Desain Grafis",
+      "Content Creator",
+      "Web Programing"
+    ],
+    "skills": [
+      "Canva",
+      "Capcut",
+      "Laravel"
+    ],
+    "location": "Kota Lahat",
+    "description": "Membuat Desain, Membantu Pekerjaan Admin BPS, membuat video company profile, dan Aplikasi Input Data",
+    "acceptance": "open",
+    "verified": true,
+    "source": "Daftar Mitra Perusahaan untuk PKL.xlsx"
+  },
+  {
+    "branch": "Lahat",
+    "name": "Badan Zakat Nasional",
+    "request_types": [
+      "PKL"
+    ],
+    "categories": [
+      "Desain Grafis",
+      "Content Creator",
+      "Digital Marekting"
+    ],
+    "skills": [
+      "Canva",
+      "Capcut",
+      "Iklan Medsos"
+    ],
+    "location": "Kota Lahat",
+    "description": "Membuat Desain, Membantu Pekerjaan Admin Baznas, membuat video untuk support medsos, dan Promosi Iklan",
+    "acceptance": "open",
+    "verified": true,
+    "source": "Daftar Mitra Perusahaan untuk PKL.xlsx"
+  },
+  {
+    "branch": "Lahat",
+    "name": "Jemmy Computer",
+    "request_types": [
+      "PKL"
+    ],
+    "categories": [
+      "Internet of Things",
+      "Desain Grafis",
+      "Content Creator",
+      "Digital Marekting",
+      "Teknisi dan Jaringan"
+    ],
+    "skills": [
+      "Canva",
+      "Capcut",
+      "Photoshop",
+      "Arduino",
+      "Teknisi & Jaringan"
+    ],
+    "location": "Kota Lahat",
+    "description": "Membuat Desain, Membantu Pekerjaan Admin Penjualan, membuat video untuk support medsos, dan Promosi Iklan, Membuat Project IoT",
+    "acceptance": "open",
+    "verified": true,
+    "source": "Daftar Mitra Perusahaan untuk PKL.xlsx"
+  }
+]
