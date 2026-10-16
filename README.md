@@ -92,9 +92,9 @@ Jangan membuka versi pengembangan ke publik sebagai layanan produksi. Saat produ
 Setiap tugas cloud sudah terisolasi. Gunakan checkout yang ada; jangan membuat Git worktree tanpa permintaan pengguna. Dependensi dan file database bertahan pada filesystem, tetapi proses server perlu dijalankan ulang pada tugas baru.
 
 
-## Keahlian & Karier
+## Cari Rekomendasi Tempat PKL
 
-Menu **Keahlian & Karier** menyimpan profil kategori PKL/TCS, keahlian, minat, pengalaman, lokasi, dan tautan portofolio per akun. Menyimpan ulang profil membatalkan rencana lama agar tidak ditampilkan untuk profil yang berubah.
+Menu **Cari Rekomendasi Tempat PKL** menyimpan profil kategori PKL/TCS, keahlian, minat, pengalaman, lokasi, dan tautan portofolio per akun. Menyimpan ulang profil membatalkan rencana lama agar tidak ditampilkan untuk profil yang berubah.
 
 **Career Match** menggunakan pencocokan berbobot transparan, bukan model AI: kategori dan jenis kegiatan wajib sesuai (60 poin), persentase keahlian yang cocok menambah maksimal 30 poin, dan lokasi yang sama persis menambah 10 poin. Normalisasi hanya huruf kecil dan spasi; belum ada pemahaman sinonim atau jarak geografis. Hanya profil mitra dengan `verified: true` dan penerimaan selain `closed` yang dipakai. Status `unknown` tetap harus dikonfirmasi. Skor bukan peluang diterima. Tombol pilih mitra mengisi kategori, jenis kegiatan, dan mitra dalam formulir surat.
 
@@ -156,7 +156,7 @@ node scripts/import-partner-profiles.js scripts/career-partners-lahat.json --onl
 
 Installer VPS menjalankan dua impor tersebut otomatis setelah backup/migrasi dan sebelum service dinyalakan ulang. Opsi `--only-missing` tidak menimpa metadata yang telah diedit akademik. Untuk memperbarui profil yang sudah ada secara sengaja, gunakan perintah impor tanpa opsi tersebut, setelah meninjau perubahannya. Cabang lain dan TCS tidak diberi profil hasil tebakan.
 
-Contoh uji: masuk cabang Lahat, buka Keahlian & Karier, pilih PKL + UI/UX Design, isi keahlian Figma dan lokasi Lahat, simpan, lalu cari mitra. Notaris Laogita akan muncul berdasarkan data ini. PKL + Web Programing menampilkan Badan Pusat Statistik. Rekomendasi tetap bukan jaminan penerimaan; konfirmasikan kembali kepada mitra.
+Contoh uji: masuk cabang Lahat, buka Cari Rekomendasi Tempat PKL, pilih PKL + UI/UX Design, isi keahlian Figma dan lokasi Lahat, simpan, lalu cari mitra. Notaris Laogita akan muncul berdasarkan data ini. PKL + Web Programing menampilkan Badan Pusat Statistik. Rekomendasi tetap bukan jaminan penerimaan; konfirmasikan kembali kepada mitra.
 
 ## QR pimpinan pada surat PKL Lahat
 
@@ -222,3 +222,14 @@ Penerima Lahat sudah disimpan pada konfigurasi cabang. Opsional override lewat `
 Sesudah menyimpan: `sudo chmod 600 /etc/eduagentpct.env` dan `sudo systemctl restart eduagentpct`. Pastikan koneksi SMTP keluar diizinkan provider VPS. Uji dengan **satu pengajuan baru** milik siswa uji, lihat status di riwayat, periksa inbox/spam, dan buka tautan melalui akun akademik yang benar. Jangan menganggap pengiriman nyata berhasil hanya dari tes simulasi. Tidak ada SMTP credential di development saat implementasi, jadi pengiriman email asli belum diverifikasi.
 
 Tes memakai transport SMTP simulasi: transaksi pengajuan tetap tersimpan, pemetaan cabang, notifikasi ulang revisi, pengabaian pekerjaan usang, antrean setelah restart, retry terbatas, ketiadaan konfigurasi, serta tidak bocornya error/kredensial provider pada status siswa. Tes tidak mengirim email kepada orang lain.
+
+
+## Tujuan instansi/perusahaan Lainnya
+
+Opsi terakhir pada daftar tujuan adalah **Lainnya — ketik sendiri**. Pilihan ini membuka nama instansi/perusahaan wajib, maksimum 150 karakter. Isian boleh diajukan pada cabang yang belum mempunyai daftar mitra. Nama disimpan per surat sebagai `custom_partner_name`, dengan `partner_id` NULL; tidak membuat entri mitra resmi atau profil rekomendasi.
+
+Nama tujuan tampil pada pratinjau, riwayat siswa, portal akademik dan PDF yang disetujui. Portal akademik menandainya sebagai isian siswa yang perlu diverifikasi, dengan sapaan umum Pimpinan pada surat. Alur nomor, revisi, persetujuan, WhatsApp/email dan pembatasan PDF tetap berlaku. Mengganti pilihan ke mitra resmi mengabaikan isian tujuan manual. Siswa tidak dapat menunjuk ID mitra cabang lain melalui API.
+
+Migrasi mempertahankan seluruh kolom, ID, indeks dan referensi surat lama saat mengubah partner_id agar dapat kosong; perubahan dibatalkan jika foreign key tidak valid. Tes memeriksa surat disetujui, audit dan antrean email sebelum/sesudah migrasi, serta pengajuan manual melalui browser hingga PDF. Cabang tanpa identitas kop/pimpinan tetap perlu melengkapi konfigurasi sebelum dapat menghasilkan PDF.
+
+Nama menu/judul sekarang **Cari Rekomendasi Tempat PKL** dan label panel pencocokan **Rekomendasi Mitra PKL**. Nama endpoint/internal tidak berubah.

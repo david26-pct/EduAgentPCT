@@ -19,3 +19,26 @@ export function migrateBranches(db) {
   } catch (error) { db.exec('ROLLBACK'); throw error; }
   finally { db.exec('PRAGMA foreign_keys=ON'); }
 }
+
+// Preserve every existing column/index and child-table reference while allowing
+// a per-letter, user-entered destination without inserting it as an official partner.
+export function migrateCustomPartners(db) {
+  db.exec('PRAGMA foreign_keys=OFF; BEGIN IMMEDIATE');
+  try {
+    let columns=db.prepare('PRAGMA table_info(letters)').all();
+    if(!columns.some(c=>c.name==='custom_partner_name'))db.exec('ALTER TABLE letters ADD COLUMN custom_partner_name TEXT');
+    columns=db.prepare('PRAGMA table_info(letters)').all();
+    if(columns.find(c=>c.name==='partner_id').notnull){
+      const sql=db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='letters'").get().sql;
+      if(!/partner_id\s+INTEGER\s+NOT\s+NULL/i.test(sql))throw Error('Unsupported letters schema; no changes applied.');
+      const objects=db.prepare("SELECT sql FROM sqlite_master WHERE tbl_name='letters' AND type IN ('index','trigger') AND sql IS NOT NULL").all();
+      const create=sql.replace(/^CREATE TABLE\s+(?:"letters"|letters)\s*/i,'CREATE TABLE letters_custom_new ').replace(/partner_id\s+INTEGER\s+NOT\s+NULL/i,'partner_id INTEGER');
+      const names=columns.map(c=>'"'+c.name.replaceAll('"','""')+'"').join(',');
+      db.exec(create);
+      db.exec(`INSERT INTO letters_custom_new(${names}) SELECT ${names} FROM letters; DROP TABLE letters; ALTER TABLE letters_custom_new RENAME TO letters;`);
+      for(const object of objects)db.exec(object.sql);
+    }
+    if(db.prepare('PRAGMA foreign_key_check').all().length)throw Error('Invalid foreign keys; original letter data retained.');
+    db.exec('COMMIT');
+  }catch(e){db.exec('ROLLBACK');throw e;}finally{db.exec('PRAGMA foreign_keys=ON');}
+}

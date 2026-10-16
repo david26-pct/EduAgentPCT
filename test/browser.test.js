@@ -129,6 +129,7 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('aside [data-view=create]').click();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.reload(); await page.locator('#workspace').waitFor();
+    await page.locator('#recent .letter-card').waitFor();
     assert.match(await page.locator('#recent').innerText(), /Instansi Uji Browser/);
     await page.locator('#logout').click(); await page.locator('#auth').waitFor();
     assert.equal(await page.locator('#workspace').isVisible(), false);

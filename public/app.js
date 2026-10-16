@@ -22,7 +22,7 @@ function view(name) {
 }
 function resetLetterEditor() {
   editingLetterId = null;
-  $('#letter-form').reset(); $('#participants').replaceChildren();
+  $('#letter-form').reset(); updateCustomPartner(); $('#participants').replaceChildren();
   if (student) addParticipant(student.name);
   $('#letter-form').elements.issued.value = today();
   $('#save-letter').textContent = 'Ajukan ke akademik →';
@@ -52,7 +52,7 @@ $('#auth-form').onsubmit = async event => {
   catch (e) { $('#auth-error').textContent = e.message; }
   finally { $('#auth-submit').disabled = false; }
 };
-function signedOut() { editingLetterId = null; career.clear(); student = null; branchDetails = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); $('#participants').replaceChildren(); $('#preview').close(); $('#chatbot-panel').close(); $('#preview-content').replaceChildren(); }
+function signedOut() { editingLetterId = null; career.clear(); student = null; branchDetails = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); updateCustomPartner(); $('#participants').replaceChildren(); $('#preview').close(); $('#chatbot-panel').close(); $('#preview-content').replaceChildren(); }
 $('#logout').onclick = async () => { try { await api('/logout', { method: 'POST', body: '{}' }); signedOut(); } catch (e) { toast(e.message); } };
 const today = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'); };
 async function signedIn() {
@@ -66,9 +66,10 @@ async function signedIn() {
     branchDetails = (await api('/branch')).letterhead;
     partners = await api('/partners');
     const select = $('[name="partner_id"]');
-    select.innerHTML = '<option value="">Pilih mitra resmi</option>' + partners.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('');
-    $('#partner-help').textContent = partners.length ? 'Pilih tujuan dari daftar mitra yang dikelola akademik.' : 'Daftar mitra belum tersedia. Akademik perlu memasukkan data mitra resmi sebelum surat dapat dibuat.';
-    $('#save-letter').disabled = !partners.length;
+    select.innerHTML = '<option value="">Pilih mitra resmi</option>' + partners.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('') + '<option value="other">Lainnya — ketik sendiri</option>';
+    updateCustomPartner();
+    $('#partner-help').textContent = partners.length ? 'Pilih tujuan dari daftar mitra yang dikelola akademik.' : 'Daftar mitra cabang belum tersedia. Pilih Lainnya untuk mengajukan tujuan sendiri.';
+    $('#save-letter').disabled = false;
     await refreshLetters();
     await career.load();
   } catch (e) { toast(e.message); }
@@ -84,7 +85,8 @@ function addParticipant(name = '') {
 $('#add-participant').onclick = () => addParticipant();
 function formData() {
   const data = Object.fromEntries(new FormData($('#letter-form')));
-  data.partner_id = Number(data.partner_id);
+  data.partner_id = data.partner_id === 'other' ? null : Number(data.partner_id);
+  if (data.partner_id !== null) delete data.custom_partner_name;
   data.participants = [...document.querySelectorAll('.participant')].map(row => ({ name: row.querySelector('.participant-name').value.trim(), program: row.querySelector('.participant-program').value.trim() }));
   return data;
 }
@@ -102,14 +104,14 @@ $('#letter-form').onsubmit = async event => {
     await api(editingLetterId ? '/letters/' + editingLetterId : '/letters', { method: editingLetterId ? 'PUT' : 'POST', body: JSON.stringify(formData()) });
     editingLetterId = null; $('#save-letter').textContent = 'Ajukan ke akademik →';
     toast('Pengajuan tersimpan. Periksa status email di riwayat; kamu juga bisa mengirim tautan lewat WhatsApp.');
-    event.target.reset(); $('#participants').replaceChildren(); addParticipant(student.name); event.target.elements.issued.value = today();
+    event.target.reset(); updateCustomPartner(); $('#participants').replaceChildren(); addParticipant(student.name); event.target.elements.issued.value = today();
     await refreshLetters(); view('history');
   } catch (e) { $('#letter-error').textContent = e.message; }
-  finally { $('#save-letter').disabled = !partners.length; }
+  finally { $('#save-letter').disabled = false; }
 };
 const formatDate = value => new Date(value + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 function preview(data) {
-  const partner = partners.find(p => p.id === data.partner_id);
+  const partner = data.custom_partner_name ? {name:data.custom_partner_name,recipient:'Pimpinan'} : partners.find(p => p.id === data.partner_id);
   const requestName = REQUEST_TYPES[data.request_type || 'PKL'];
   const head = branchDetails;
   const signatureQR = data.status === 'approved' ? getSignatureQR(student.branch, data.request_type || 'PKL') : null;
@@ -121,7 +123,7 @@ $('#close-preview').onclick = () => $('#preview').close();
 const statusLabels = { pending: 'Menunggu persetujuan akademik', revision: 'Perlu revisi', approved: 'Disetujui · siap dicetak' };
 function renderList(target, entries) {
   if (!entries.length) { target.innerHTML = '<div class="empty"><strong>Belum ada pengajuan</strong><p>Buat pengajuan surat untuk diperiksa akademik.</p></div>'; return; }
-  target.innerHTML = '<div class="letter-list">' + entries.map(l => `<article class="letter-card"><div><h3>${escapeHTML(l.partner_name)}</h3><p>${escapeHTML(l.request_type)} · ${escapeHTML(l.category || 'Kategori belum dipilih')}</p><p>${escapeHTML(l.number || 'Nomor diisi akademik')} · ${l.participants.length} siswa</p><p>${escapeHTML(formatDate(l.start))} – ${escapeHTML(formatDate(l.end))}</p><span class="status ${l.status === 'approved' ? '' : 'draft'}">${escapeHTML(statusLabels[l.status])}</span>${l.email_notification ? `<p class="email-notice">Email akademik: ${escapeHTML(l.email_notification.message)}</p>` : ''}${l.review_note ? `<p class="review-note">Catatan akademik: ${escapeHTML(l.review_note)}</p>` : ''}${l.approved_at ? `<p class="approved-info">Disetujui ${escapeHTML(new Date(l.approved_at).toLocaleString('id-ID'))}</p>` : ''}</div><div class="student-actions"><button class="secondary preview-saved" data-id="${l.id}">Lihat</button>${l.status === 'approved' ? `<button class="primary download" data-id="${l.id}">↓ PDF</button>` : ''}${l.status === 'pending' && l.whatsapp_url ? `<a class="secondary whatsapp" href="${escapeHTML(l.whatsapp_url)}" target="_blank" rel="noopener noreferrer">Kirim ke WhatsApp Akademik ↗</a>` : ''}${l.status === 'pending' && !l.whatsapp_url ? '<p class="fine">Nomor WhatsApp akademik cabang belum tersedia. Hubungi akademik.</p>' : ''}${l.status === 'revision' ? `<button class="secondary complete" data-id="${l.id}">Perbaiki pengajuan</button>` : ''}</div></article>`).join('') + '</div>';
+  target.innerHTML = '<div class="letter-list">' + entries.map(l => `<article class="letter-card"><div><h3>${escapeHTML(l.partner_name)}</h3>${l.custom_partner_name ? '<p class="fine">Tujuan lainnya · isian siswa</p>' : ''}<p>${escapeHTML(l.request_type)} · ${escapeHTML(l.category || 'Kategori belum dipilih')}</p><p>${escapeHTML(l.number || 'Nomor diisi akademik')} · ${l.participants.length} siswa</p><p>${escapeHTML(formatDate(l.start))} – ${escapeHTML(formatDate(l.end))}</p><span class="status ${l.status === 'approved' ? '' : 'draft'}">${escapeHTML(statusLabels[l.status])}</span>${l.email_notification ? `<p class="email-notice">Email akademik: ${escapeHTML(l.email_notification.message)}</p>` : ''}${l.review_note ? `<p class="review-note">Catatan akademik: ${escapeHTML(l.review_note)}</p>` : ''}${l.approved_at ? `<p class="approved-info">Disetujui ${escapeHTML(new Date(l.approved_at).toLocaleString('id-ID'))}</p>` : ''}</div><div class="student-actions"><button class="secondary preview-saved" data-id="${l.id}">Lihat</button>${l.status === 'approved' ? `<button class="primary download" data-id="${l.id}">↓ PDF</button>` : ''}${l.status === 'pending' && l.whatsapp_url ? `<a class="secondary whatsapp" href="${escapeHTML(l.whatsapp_url)}" target="_blank" rel="noopener noreferrer">Kirim ke WhatsApp Akademik ↗</a>` : ''}${l.status === 'pending' && !l.whatsapp_url ? '<p class="fine">Nomor WhatsApp akademik cabang belum tersedia. Hubungi akademik.</p>' : ''}${l.status === 'revision' ? `<button class="secondary complete" data-id="${l.id}">Perbaiki pengajuan</button>` : ''}</div></article>`).join('') + '</div>';
   target.querySelectorAll('.preview-saved').forEach(b => b.onclick = () => preview(letters.find(l => l.id === Number(b.dataset.id))));
   target.querySelectorAll('.download').forEach(b => b.onclick = async () => {
     b.disabled = true;
@@ -134,6 +136,9 @@ function renderList(target, entries) {
   target.querySelectorAll('.complete').forEach(b => b.onclick = () => {
     const l = letters.find(l => l.id === Number(b.dataset.id));
     for (const field of ['partner_id', 'start', 'end', 'issued', 'request_type', 'category']) $('#letter-form').elements[field].value = l[field] || (field === 'request_type' ? 'PKL' : '');
+    $('#letter-form').elements.partner_id.value = l.custom_partner_name ? 'other' : String(l.partner_id);
+    $('#letter-form').elements.custom_partner_name.value = l.custom_partner_name || '';
+    updateCustomPartner();
     $('#participants').replaceChildren(); l.participants.forEach(p => { addParticipant(p.name); $('#participants').lastElementChild.querySelector('.participant-program').value = p.program; });
     editingLetterId = l.id; $('#save-letter').textContent = 'Ajukan ulang revisi →'; view('create'); toast('Perbaiki sesuai catatan, lalu ajukan ulang. Nomor diisi oleh akademik.');
   });
@@ -146,7 +151,7 @@ async function refreshLetters() {
 const career = initCareer({ api, toast, onChoose: (partnerId, profile) => {
   resetLetterEditor();
   const form = $('#letter-form');
-  form.elements.partner_id.value = String(partnerId);
+  form.elements.partner_id.value = String(partnerId); updateCustomPartner();
   form.elements.request_type.value = profile.request_type;
   form.elements.category.value = profile.category;
   view('create'); toast('Mitra dan kategori dipilih. Lengkapi data surat.');
@@ -159,3 +164,11 @@ for (const id of ['refresh-letters', 'history-refresh']) document.querySelector(
 window.addEventListener('focus', () => { if (student) refreshLetters().catch(() => {}); });
 
 setInterval(() => { if (student && !document.hidden) refreshLetters().catch(() => {}); }, 30000);
+
+function updateCustomPartner() {
+  const form=$('#letter-form');const custom=form.elements.partner_id.value==='other';
+  $('#custom-partner-field').hidden=!custom;form.elements.custom_partner_name.required=custom;
+  form.elements.custom_partner_name.disabled=!custom;
+}
+$('#letter-form').elements.partner_id.addEventListener('change', updateCustomPartner);
+updateCustomPartner();
