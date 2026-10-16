@@ -131,12 +131,16 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
       audit(db,letter.id,req.student,'resubmitted');notifications.enqueue(letter.id,letter.version+1);db.exec('COMMIT');res.json({id:letter.id,status:'pending'});
     }catch(e){db.exec('ROLLBACK');throw e;}
   });
-  app.get('/api/letters/:id/pdf', (req, res) => {
+  function approvedLetter(req, res, next) {
     const l = db.prepare("SELECT letters.*, COALESCE(letters.custom_partner_name, partners.name) AS partner_name, COALESCE(partners.recipient,'Pimpinan') AS recipient FROM letters LEFT JOIN partners ON partners.id=letters.partner_id WHERE letters.id=? AND student_id=?").get(req.params.id, req.student.id);
     if (!l) return res.status(404).json({ error: 'Surat tidak ditemukan.' });
     if (l.status !== 'approved' || !l.number) return res.status(403).json({ error: 'PDF hanya tersedia setelah akademik menyetujui dan mengisi nomor surat.' });
     const head = LETTERHEADS[req.student.branch];
     if (!head) return res.status(409).json({ error: 'Identitas kop dan pimpinan cabang ini belum dikonfigurasi. Hubungi akademik.' });
+    req.approvedLetter = l; req.letterhead = head; next();
+  }
+  app.get('/api/letters/:id/pdf', approvedLetter, (req, res) => {
+    const l = req.approvedLetter, head = req.letterhead;
     const requestName = REQUEST_TYPES[l.request_type];
     const date = value => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
     res.type('pdf').attachment(`Surat-${l.request_type}-${l.id}.pdf`);
@@ -181,6 +185,40 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     } else doc.moveDown(4);
     doc.font('Helvetica-Bold').text(head.leader, { align: 'right' }).font('Helvetica').text(head.leader_id, { align: 'right' });
     doc.moveDown().fontSize(9).text('Tembusan Yth. Arsip').text(`Contact Person: ${head.contact}`).text(head.contact_phone);
+    doc.end();
+  });
+  app.get('/api/letters/:id/envelope.pdf', approvedLetter, (req, res) => {
+    const l = req.approvedLetter, head = req.letterhead;
+    const mm = value => value * 72 / 25.4;
+    res.type('pdf').attachment(`Amplop-${l.request_type}-${l.id}.pdf`);
+    const doc = new PDFDocument({ size: [mm(220), mm(110)], margin: mm(10), info: { Title: `Amplop Permohonan ${l.request_type} - PalComTech ${req.student.branch}` } });
+    doc.pipe(res);
+    const left = mm(12), top = mm(10), logoWidth = mm(15), scale = logoWidth / 127;
+    doc.save().rect(left, top, logoWidth, logoWidth * 133 / 127).clip();
+    doc.image(resolve(root, 'public/assets/palcomtech-letterhead.jpg'), left - 115 * scale, top - 34 * scale, { width: 1239 * scale });
+    doc.restore();
+    const senderX = mm(32), senderWidth = mm(145);
+    doc.fillColor('#173e60').font('Helvetica-Bold').fontSize(14).text(`PalComTech ${req.student.branch}`, senderX, top, { width: senderWidth });
+    doc.fillColor('#222').font('Helvetica').fontSize(8).text(head.address, { width: senderWidth }).text(`Telp. ${head.phone}`, { width: senderWidth }).text(`${head.website} | ${head.email}`, { width: senderWidth });
+    doc.moveTo(left, mm(33)).lineTo(mm(181), mm(33)).strokeColor('#173e60').lineWidth(.8).stroke();
+    doc.save().dash(3, { space: 3 }).lineWidth(.5).strokeColor('#b7bfbd').rect(mm(189), mm(11), mm(20), mm(24)).stroke().undash();
+    doc.fontSize(6).fillColor('#858d8a').text('PERANGKO', mm(189), mm(22), { width: mm(20), align: 'center' });doc.restore();
+    const x = mm(104), y = mm(51), width = mm(103);
+    let fontSize = 12;
+    while (fontSize > 8) {
+      doc.font('Helvetica-Bold').fontSize(fontSize);
+      const companyHeight = doc.heightOfString(l.partner_name, { width });
+      doc.font('Helvetica').fontSize(Math.min(10, fontSize));
+      const recipientHeight = doc.heightOfString(l.recipient, { width });
+      if (companyHeight + recipientHeight + 36 <= mm(45)) break;
+      fontSize--;
+    }
+    doc.fillColor('#222').font('Helvetica').fontSize(10).text('Kepada Yth.', x, y, { width });
+    doc.fontSize(Math.min(10, fontSize)).text(l.recipient, { width });doc.moveDown(.25);
+    doc.font('Helvetica-Bold').fontSize(fontSize).text(l.partner_name, { width });
+    doc.moveDown(.4).font('Helvetica').fontSize(10).text('Di Tempat', { width });
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#173e60').text(`SURAT PERMOHONAN ${l.request_type}`, left, mm(78), { width: mm(83) });
+    doc.font('Helvetica').fontSize(8).fillColor('#555').text(`Nomor: ${l.number}`, left, mm(84), { width: mm(83) });
     doc.end();
   });
   app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint tidak ditemukan.' }));

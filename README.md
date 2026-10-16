@@ -233,3 +233,13 @@ Nama tujuan tampil pada pratinjau, riwayat siswa, portal akademik dan PDF yang d
 Migrasi mempertahankan seluruh kolom, ID, indeks dan referensi surat lama saat mengubah partner_id agar dapat kosong; perubahan dibatalkan jika foreign key tidak valid. Tes memeriksa surat disetujui, audit dan antrean email sebelum/sesudah migrasi, serta pengajuan manual melalui browser hingga PDF. Cabang tanpa identitas kop/pimpinan tetap perlu melengkapi konfigurasi sebelum dapat menghasilkan PDF.
 
 Nama menu/judul sekarang **Cari Rekomendasi Tempat PKL** dan label panel pencocokan **Rekomendasi Mitra PKL**. Nama endpoint/internal tidak berubah.
+
+## PDF amplop surat
+
+Surat yang sudah disetujui mempunyai tombol **PDF Surat** dan **PDF Amplop** di riwayat siswa. Endpoint `/api/letters/:id/envelope.pdf` memakai pemeriksaan persetujuan, nomor, kepemilikan akun, dan identitas cabang yang sama dengan PDF surat; pending/revisi ditolak. Tidak diperlukan persetujuan terpisah untuk amplop. PKL maupun TCS mengikuti jenis suratnya.
+
+Draf amplop memakai format DL landscape 220 × 110 mm, satu halaman: logo asli PalComTech dan identitas pengirim di kiri atas, kotak perangko di kanan atas, penerima/instansi di kanan bawah, serta perihal dan nomor di kiri bawah. Tujuan manual Lainnya juga didukung, dengan sapaan Pimpinan. Alamat penerima memakai “Di Tempat” karena data alamat pos belum tersedia; jangan menganggapnya cukup untuk pengiriman lewat pos sebelum melengkapi alamat fisik. QR pimpinan tidak dicetak pada amplop.
+
+Cetak pada media DL dengan **Actual size / 100%**, tanpa Fit to page. Sesuaikan arah pemasukan amplop dengan printer dan uji pada kertas biasa terlebih dahulu. Ini layout untuk dicetak pada amplop jadi, bukan pola potong/lipat amplop dari kertas A4. Gunakan printer yang mendukung ukuran amplop tersebut.
+
+Tes memeriksa unduhan lewat browser setelah approval, penolakan akun lain/pending, logo tertanam, ukuran PDF, satu halaman untuk nama panjang, dan nama tujuan resmi/manual. Hasil cetak fisik di printer pengguna belum diuji.

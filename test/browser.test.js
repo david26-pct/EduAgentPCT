@@ -108,6 +108,10 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await staffContext.close();
     await page.locator('#history-refresh').click();
     await page.locator('#history .download').waitFor();
+    const envelopeDownload = page.waitForEvent('download');
+    await page.locator('#history .download-envelope').click();
+    const envelopeFile = await envelopeDownload; await envelopeFile.saveAs(join(dir, 'envelope.pdf'));
+    assert.match(execFileSync('pdftotext', ['-layout', join(dir, 'envelope.pdf'), '-'], { encoding: 'utf8' }), /Instansi Uji Browser/);
     const downloadEvent = page.waitForEvent('download');
     await page.locator('#history .download').click();
     const download = await downloadEvent; await download.saveAs(join(dir, 'letter.pdf'));
