@@ -18,7 +18,7 @@ test('Alur siswa, draf, PDF, isolasi akun, dan validasi keamanan', async () => {
   }
   try {
     assert.equal((await request('/letters')).status, 401);
-    const account = { name: 'Siswa Uji', nis: '123456', password: 'password-kuat-2026' };
+    const account = { branch: 'Lahat', name: 'Siswa Uji', nis: '123456', password: 'password-kuat-2026' };
     assert.equal((await request('/register', { ...account, password: '123' })).status, 400);
     const registration = await request('/register', account); assert.equal(registration.status, 200);
     const cookie = registration.headers.get('set-cookie').split(';')[0];
@@ -52,7 +52,7 @@ test('Alur siswa, draf, PDF, isolasi akun, dan validasi keamanan', async () => {
     const pdf = await request(`/letters/${id}/pdf`, undefined, cookie);
     assert.equal(pdf.status, 200); assert.match(pdf.headers.get('content-type'), /application\/pdf/);
     assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 4).toString(), '%PDF');
-    const second = await request('/register', { name: 'Siswa Kedua', nis: '654321', password: 'password-kuat-lain' });
+    const second = await request('/register', { branch: 'Lahat', name: 'Siswa Kedua', nis: '654321', password: 'password-kuat-lain' });
     const otherCookie = second.headers.get('set-cookie').split(';')[0];
     assert.equal((await request(`/letters/${id}/pdf`, undefined, otherCookie)).status, 404);
     assert.deepEqual(await (await request('/letters', undefined, otherCookie)).json(), []);
@@ -68,7 +68,11 @@ test('Migrasi surat lama mempertahankan data dan aman dijalankan ulang', () => {
   const dir = mkdtempSync(join(tmpdir(), 'eduagent-migration-'));
   const databasePath = join(dir, 'legacy.sqlite');
   const legacy = new DatabaseSync(databasePath);
-  legacy.exec(`CREATE TABLE letters(id INTEGER PRIMARY KEY, student_id INTEGER NOT NULL, number TEXT UNIQUE, partner_id INTEGER NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL, issued TEXT NOT NULL, participants TEXT NOT NULL, created TEXT DEFAULT CURRENT_TIMESTAMP);
+  legacy.exec(`CREATE TABLE students(id INTEGER PRIMARY KEY,name TEXT NOT NULL,nis TEXT UNIQUE NOT NULL,salt TEXT NOT NULL,hash TEXT NOT NULL);
+    INSERT INTO students VALUES(1,'Siswa Lama','101','salt','hash');
+    CREATE TABLE partners(id INTEGER PRIMARY KEY,name TEXT NOT NULL,recipient TEXT NOT NULL);
+    INSERT INTO partners VALUES(1,'Mitra Lama','Pimpinan');
+    CREATE TABLE letters(id INTEGER PRIMARY KEY, student_id INTEGER NOT NULL, number TEXT UNIQUE, partner_id INTEGER NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL, issued TEXT NOT NULL, participants TEXT NOT NULL, created TEXT DEFAULT CURRENT_TIMESTAMP);
     INSERT INTO letters(student_id,number,partner_id,start,end,issued,participants) VALUES(1,'LAMA/001',1,'2026-10-01','2026-11-01','2026-09-01','[]');`);
   legacy.close();
   try {

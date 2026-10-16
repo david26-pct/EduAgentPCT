@@ -1,6 +1,6 @@
 # EduAgentPCT
 
-Versi awal portal siswa LKP PalComTech Lahat untuk membuat surat permohonan PKL. Saat ini berupa aplikasi web responsif dan backend Node.js. Paket Flutter Android/iOS/Windows/macOS belum dibuat; jangan menyebut versi ini sebagai aplikasi native yang selesai.
+Versi awal portal siswa LKP PalComTech untuk membuat surat permohonan PKL. Saat ini berupa aplikasi web responsif dan backend Node.js. Paket Flutter Android/iOS/Windows/macOS belum dibuat; jangan menyebut versi ini sebagai aplikasi native yang selesai.
 
 ## Fitur yang sudah berjalan
 
@@ -129,3 +129,14 @@ Aktivasi pada VPS:
 Maksimal tiga **percobaan** AI per siswa per hari UTC, disimpan di database; kegagalan juga dihitung dan tidak diulang otomatis. Setiap permintaan dibatasi 1.200 output token dan 30 detik. Batas ini bukan batas biaya global: atur anggaran di akun penyedia dan verifikasi NIS sebelum membuka layanan AI ke banyak pengguna, karena akun siswa masih dapat didaftarkan mandiri. `store: false` diminta pada API, tetapi bukan janji tanpa retensi pada seluruh infrastruktur penyedia. Rencana disimpan lokal per siswa. AI bisa keliru dan tidak menjamin kompetensi/diterimanya siswa.
 
 Pengujian: profil privat, validasi, impor metadata, pengurutan mitra terverifikasi, rencana dasar, persetujuan, batas harian, dan kegagalan penyedia diperiksa. Panggilan AI memakai **simulasi** dalam tes; panggilan nyata belum diverifikasi karena kunci API belum tersedia di development.
+
+
+## Akun dan mitra per cabang
+
+Login dan pendaftaran wajib memilih satu dari: Palembang Sudirman, Palembang OPI, Palembang Sako, Prabumulih, Lahat, Baturaja, Lubuk Linggau. Identitas umum aplikasi bertuliskan PalComTech; cabang aktif ditampilkan pada akun siswa. NIS unik per cabang, bukan lintas cabang. Cabang diambil dari sesi server, bukan parameter yang dapat diganti siswa untuk melihat mitra lain. Surat, daftar mitra, dan Career Match mengikuti cabang akun. Nomor surat unik per cabang.
+
+Migrasi otomatis mempertahankan ID akun, sesi, surat, profil keahlian, dan rencana yang sudah ada; data lama ditempatkan di Lahat. Migrasi memeriksa foreign key dan membatalkan perubahan jika data lama tidak konsisten. Installer membuat backup SQLite sebelum migrasi. Jangan memindahkan akun antar-cabang secara manual tanpa meninjau kepemilikan surat dan data terkait.
+
+Daftar 61 mitra saat ini khusus Lahat. Cabang lain awalnya kosong sampai daftar resminya dimasukkan. Untuk impor mitra atau profil pekerjaan, sertakan `"branch": "Palembang Sudirman"` (atau nama persis cabang lain) pada setiap objek JSON. Format lama tanpa `branch` tetap dianggap Lahat demi kompatibilitas. Nama mitra sama boleh muncul di beberapa cabang, masing-masing mempunyai ID sendiri. Profil pekerjaan diperbarui berdasarkan pasangan nama dan cabang.
+
+Kop/pimpinan yang diberikan sejauh ini hanya Lahat. `public/branches.js` memuat data surat per cabang; tambahkan identitas resmi setelah dikonfirmasi. PDF cabang tanpa identitas surat ditolak dengan pesan jelas, dan pratinjau tidak memakai nama pimpinan/kontak Lahat sebagai pengganti. Daftar cabang bukan verifikasi bahwa pendaftar adalah siswa cabang tersebut; pencocokan NIS ke data akademik tetap belum tersedia.

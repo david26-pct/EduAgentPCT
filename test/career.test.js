@@ -31,7 +31,7 @@ test('Profil privat, pencocokan mitra terverifikasi, impor profil, rencana dasar
   }
   try {
     assert.equal((await request('/career')).status,401);
-    const registration = await request('/register',{name:'Siswa Career',nis:'998877',password:'password-career-aman'});
+    const registration = await request('/register',{branch:'Lahat',name:'Siswa Career',nis:'998877',password:'password-career-aman'});
     const cookie = registration.headers.get('set-cookie').split(';')[0];
     assert.equal((await request('/career/matches',undefined,cookie)).status,400);
     const profile = { request_type:'PKL',category:'UI/UX Design',skills:['Figma'],interests:'Desain aplikasi',experience:'Prototipe sederhana',location:'Lahat',portfolio:'https://portfolio.example' };
@@ -50,7 +50,7 @@ test('Profil privat, pencocokan mitra terverifikasi, impor profil, rencana dasar
     const day=new Date().toISOString().slice(0,10); assert.equal(db.prepare('SELECT count FROM ai_attempts WHERE day=?').get(day).count,3);
     assert.equal((await request('/career/plan',{use_ai:true,consent:true},cookie)).status,429);
     assert.equal(calls,3);
-    const other = await request('/register',{name:'Autre Siswa',nis:'112233',password:'password-career-lain'});
+    const other = await request('/register',{branch:'Lahat',name:'Autre Siswa',nis:'112233',password:'password-career-lain'});
     const otherCookie = other.headers.get('set-cookie').split(';')[0];
     const otherState=await (await request('/career',undefined,otherCookie)).json(); assert.equal(otherState.profile,null); assert.equal(otherState.plan,null);
     assert.equal((await request('/career/profile',{...profile,skills:['Figma','CSS']},cookie,'PUT')).status,200);
@@ -62,7 +62,7 @@ test('Tanpa kunci API, AI ditolak dengan jelas dan rencana dasar tetap berfungsi
  const dir=mkdtempSync(join(tmpdir(),'eduagent-noai-'));const {app,db}=createApp({databasePath:join(dir,'app.sqlite'),careerOptions:{aiKey:''}});
  const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const url=`http://127.0.0.1:${server.address().port}/api`;
  try {
-  const registered=await fetch(url+'/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Siswa Tanpa AI',nis:'123123',password:'password-tanpa-ai'})});
+  const registered=await fetch(url+'/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({branch:'Lahat',name:'Siswa Tanpa AI',nis:'123123',password:'password-tanpa-ai'})});
   const headers={'Content-Type':'application/json',Cookie:registered.headers.get('set-cookie').split(';')[0]};
   await fetch(url+'/career/profile',{method:'PUT',headers,body:JSON.stringify({request_type:'TCS',category:'Internet of Things',skills:['Sensor']})});
   assert.equal((await (await fetch(url+'/career',{headers})).json()).ai_available,false);

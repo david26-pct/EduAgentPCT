@@ -1,4 +1,6 @@
 import express from 'express';
+import { BRANCHES, LETTERHEADS } from './public/branches.js';
+import { migrateBranches } from './branch-migration.js';
 import { registerCareerRoutes } from './career.js';
 import { REQUEST_TYPES, CATEGORIES } from './public/request-options.js';
 import helmet from 'helmet';
@@ -14,7 +16,7 @@ const root = fileURLToPath(new URL('.', import.meta.url));
 export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 'data/app.sqlite'), secure = process.env.NODE_ENV === 'production', careerOptions }  = {}) {
   mkdirSync(resolve(databasePath, '..'), { recursive: true });
   const db = new DatabaseSync(databasePath);
-  db.exec(`PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;
+  db.exec(`PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;
     CREATE TABLE IF NOT EXISTS students(id INTEGER PRIMARY KEY, name TEXT NOT NULL, nis TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions(token TEXT PRIMARY KEY, student_id INTEGER NOT NULL REFERENCES students(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS partners(id INTEGER PRIMARY KEY, name TEXT NOT NULL, recipient TEXT NOT NULL);
@@ -27,6 +29,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     if (!columns.includes('category')) db.exec('ALTER TABLE letters ADD COLUMN category TEXT');
     db.exec('COMMIT');
   } catch (error) { db.exec('ROLLBACK'); throw error; }
+  migrateBranches(db);
   const app = express();
   app.disable('x-powered-by');
   // The deployment proxy overwrites forwarded headers and connects over loopback.
@@ -40,7 +43,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
   });
   const authLimit = rateLimit({ windowMs: 15 * 60000, limit: 20 });
   const digest = value => createHash('sha256').update(value).digest('hex');
-  const publicStudent = row => ({ id: row.id, name: row.name, nis: row.nis });
+  const publicStudent = row => ({ id: row.id, name: row.name, nis: row.nis, branch: row.branch });
   const text = (value, max = 150) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max && !/[\x00-\x1f]/.test(value);
   function session(req, res, student) {
     const token = randomBytes(32).toString('hex');
@@ -50,22 +53,24 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     res.json(publicStudent(student));
   }
   app.post('/api/register', authLimit, (req, res) => {
-    const { name, nis, password } = req.body;
+    const { name, nis, password, branch } = req.body;
+    if (!BRANCHES.includes(branch)) return res.status(400).json({ error: 'Pilih cabang PalComTech yang terdaftar.' });
     if (!text(name, 100) || !/^\d{3,30}$/.test(nis || '') || typeof password !== 'string' || password.length < 10 || password.length > 128) return res.status(400).json({ error: 'Isi nama, NIS 3–30 angka, dan password 10–128 karakter.' });
     const salt = randomBytes(16).toString('hex');
     const hash = scryptSync(password, salt, 64).toString('hex');
     try {
-      const result = db.prepare('INSERT INTO students(name,nis,salt,hash) VALUES(?,?,?,?)').run(name.trim(), nis, salt, hash);
-      session(req, res, { id: Number(result.lastInsertRowid), name: name.trim(), nis });
+      const result = db.prepare('INSERT INTO students(name,nis,salt,hash,branch) VALUES(?,?,?,?,?)').run(name.trim(), nis, salt, hash, branch);
+      session(req, res, { id: Number(result.lastInsertRowid), name: name.trim(), nis, branch });
     } catch (error) {
-      if (String(error).includes('UNIQUE')) return res.status(409).json({ error: 'NIS sudah terdaftar.' });
+      if (String(error).includes('UNIQUE')) return res.status(409).json({ error: 'NIS sudah terdaftar di cabang ini.' });
       throw error;
     }
   });
   app.post('/api/login', authLimit, (req, res) => {
-    const { name, nis, password } = req.body;
+    const { name, nis, password, branch } = req.body;
+    if (!BRANCHES.includes(branch)) return res.status(400).json({ error: 'Pilih cabang PalComTech yang terdaftar.' });
     if (!text(name, 100) || typeof nis !== 'string' || typeof password !== 'string' || password.length > 128) return res.status(400).json({ error: 'Lengkapi nama, NIS, dan password.' });
-    const student = db.prepare('SELECT * FROM students WHERE nis=?').get(nis);
+    const student = db.prepare('SELECT * FROM students WHERE nis=? AND branch=?').get(nis, branch);
     const hash = scryptSync(password, student?.salt || 'dummy-salt', 64);
     if (!student || student.name.toLocaleLowerCase('id') !== name.trim().toLocaleLowerCase('id') || !timingSafeEqual(hash, Buffer.from(student.hash, 'hex'))) return res.status(401).json({ error: 'Nama, NIS, atau password tidak sesuai.' });
     session(req, res, student);
@@ -79,12 +84,13 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     next();
   });
   registerCareerRoutes(app, db, careerOptions);
+  app.get('/api/branch', (req, res) => res.json({ branch: req.student.branch, letterhead: LETTERHEADS[req.student.branch] || null }));
   app.get('/api/me', (req, res) => res.json(publicStudent(req.student)));
   app.post('/api/logout', (req, res) => {
     db.prepare('DELETE FROM sessions WHERE token=?').run(digest(req.sessionToken));
     res.clearCookie('session', { path: '/', secure, httpOnly: true, sameSite: 'strict' }).json({ ok: true });
   });
-  app.get('/api/partners', (req, res) => res.json(db.prepare('SELECT * FROM partners ORDER BY name').all()));
+  app.get('/api/partners', (req, res) => res.json(db.prepare('SELECT * FROM partners WHERE branch=? ORDER BY name').all(req.student.branch)));
   app.get('/api/letters', (req, res) => res.json(db.prepare('SELECT letters.*, partners.name AS partner_name FROM letters JOIN partners ON partners.id=letters.partner_id WHERE student_id=? ORDER BY letters.id DESC').all(req.student.id).map(l => ({ ...l, participants: JSON.parse(l.participants) }))));
   app.post('/api/letters', (req, res) => {
     const { number, partner_id, start, end, issued, participants, request_type, category } = req.body;
@@ -92,9 +98,9 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
     if ((number && !text(number, 80)) || !date(start) || !date(end) || !date(issued) || start > end || !Array.isArray(participants) || participants.length < 1 || participants.length > 10 || participants.some(p => !text(p.name, 100) || !text(p.program, 150))) return res.status(400).json({ error: 'Periksa nomor surat, tanggal, dan data peserta (maksimal 10 siswa).' });
     if (!participants.some(p => p.name.trim().toLocaleLowerCase('id') === req.student.name.toLocaleLowerCase('id'))) return res.status(400).json({ error: 'Nama pemilik akun wajib tercantum dalam peserta.' });
-    if (!db.prepare('SELECT id FROM partners WHERE id=?').get(partner_id)) return res.status(400).json({ error: 'Pilih mitra resmi dari daftar.' });
+    if (!db.prepare('SELECT id FROM partners WHERE id=? AND branch=?').get(partner_id, req.student.branch)) return res.status(400).json({ error: 'Pilih mitra resmi dari daftar.' });
     try {
-      const result = db.prepare('INSERT INTO letters(student_id,number,partner_id,start,end,issued,participants,request_type,category) VALUES(?,?,?,?,?,?,?,?,?)').run(req.student.id, number?.trim() || null, partner_id, start, end, issued, JSON.stringify(participants.map(p => ({ name: p.name.trim(), program: p.program.trim() }))), request_type, category);
+      const result = db.prepare('INSERT INTO letters(student_id,number,partner_id,start,end,issued,participants,request_type,category,branch) VALUES(?,?,?,?,?,?,?,?,?,?)').run(req.student.id, number?.trim() || null, partner_id, start, end, issued, JSON.stringify(participants.map(p => ({ name: p.name.trim(), program: p.program.trim() }))), request_type, category, req.student.branch);
       res.status(201).json({ id: Number(result.lastInsertRowid) });
     } catch (error) {
       if (String(error).includes('UNIQUE')) return res.status(409).json({ error: 'Nomor surat sudah digunakan. Konfirmasikan kepada akademik.' });
@@ -105,6 +111,8 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     const l = db.prepare('SELECT letters.*, partners.name AS partner_name, partners.recipient FROM letters JOIN partners ON partners.id=letters.partner_id WHERE letters.id=? AND student_id=?').get(req.params.id, req.student.id);
     if (!l) return res.status(404).json({ error: 'Surat tidak ditemukan.' });
     if (!l.number) return res.status(400).json({ error: 'Draf belum memiliki nomor dari akademik. Buat surat lengkap setelah nomor diperoleh.' });
+    const head = LETTERHEADS[req.student.branch];
+    if (!head) return res.status(409).json({ error: 'Identitas kop dan pimpinan cabang ini belum dikonfigurasi. Hubungi akademik.' });
     const requestName = REQUEST_TYPES[l.request_type];
     const date = value => new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(value));
     res.type('pdf').attachment(`Surat-${l.request_type}-${l.id}.pdf`);
@@ -116,14 +124,14 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     doc.save().rect(52, 52, 52, 55).clip();
     doc.image(resolve(root, 'public/assets/palcomtech-letterhead.jpg'), 52 - 115 * logoScale, 52 - 34 * logoScale, { width: 1239 * logoScale });
     doc.restore();
-    doc.font('Helvetica-Bold').fontSize(22).fillColor('#0d4265').text('PalComTech Lahat', 116, 52);
-    doc.font('Helvetica').fontSize(9).fillColor('#222').text('Jl. Kolonel M. Nuh No.02 – Kota Lahat').text('Telp. (0731) 3200778').text('www.palcomtech.ac.id | palcomtech.lahat@palcomtech.ac.id');
+    doc.font('Helvetica-Bold').fontSize(22).fillColor('#0d4265').text(`PalComTech ${req.student.branch}`, 116, 52);
+    doc.font('Helvetica').fontSize(9).fillColor('#222').text(head.address).text(`Telp. ${head.phone}`).text(`${head.website} | ${head.email}`);
     doc.x = 52; doc.y = 115;
     doc.moveDown(.7).moveTo(52, doc.y).lineTo(543, doc.y).strokeColor('#0d4265').lineWidth(2).stroke();
     doc.moveDown(1).fontSize(11).text(`Nomor: ${l.number}`).text(`Perihal: Permohonan ${requestName}`).moveDown();
     doc.text('Kepada Yth,').text(l.recipient).text(l.partner_name).text('Di Tempat').moveDown();
     doc.text('Dengan hormat,').moveDown(.5);
-    doc.text(`Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech Lahat untuk dapat menjalankan ${requestName} (${l.request_type}) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.`, { align: 'justify', lineGap: 3 });
+    doc.text(`Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech ${req.student.branch} untuk dapat menjalankan ${requestName} (${l.request_type}) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.`, { align: 'justify', lineGap: 3 });
     doc.moveDown(.7).text(`Adapun nama siswa yang akan melaksanakan ${requestName} pada ${date(l.start)} s.d. ${date(l.end)}, sebagai berikut:`, { lineGap: 3 }).moveDown(.7);
     function row(cells, bold = false) {
       doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10);
@@ -139,8 +147,8 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
     JSON.parse(l.participants).forEach((p, i) => row([String(i + 1), p.name, p.program]));
     doc.moveDown().font('Helvetica').fontSize(11).text('Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya diucapkan terima kasih.', 52, doc.y, { width: 491, lineGap: 3 });
     if (doc.y > 560) doc.addPage();
-    doc.moveDown().text(`Lahat, ${date(l.issued)}`, { align: 'right' }).text('Pimpinan', { align: 'right' }).moveDown(4).font('Helvetica-Bold').text('Abdul Rajab, S.E.', { align: 'right' }).font('Helvetica').text('01.PCT.16.LHT', { align: 'right' });
-    doc.moveDown().fontSize(9).text('Tembusan Yth. Arsip').text('Contact Person: Akhmad Wan Mukhlas (Koordinator Akademik)').text('0823-73725066');
+    doc.moveDown().text(`${head.city}, ${date(l.issued)}`, { align: 'right' }).text('Pimpinan', { align: 'right' }).moveDown(4).font('Helvetica-Bold').text(head.leader, { align: 'right' }).font('Helvetica').text(head.leader_id, { align: 'right' });
+    doc.moveDown().fontSize(9).text('Tembusan Yth. Arsip').text(`Contact Person: ${head.contact}`).text(head.contact_phone);
     doc.end();
   });
   app.use('/api', (req, res) => res.status(404).json({ error: 'Endpoint tidak ditemukan.' }));

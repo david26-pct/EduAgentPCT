@@ -22,12 +22,16 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await loginLogo.waitFor({ state: 'visible' });
     assert.equal(await loginLogo.evaluate(img => img.complete && img.naturalWidth === 1239), true);
     await page.locator('#register-tab').click();
+    assert.equal(await page.locator('#auth-form [name=branch] option').count(), 8);
+    assert.equal(await page.locator('#auth .brand small').innerText(), 'PALCOMTECH');
+    await page.locator('#auth-form [name=branch]').selectOption('Lahat');
     await page.locator('#auth-form [name=name]').fill('Siswa Browser');
     await page.locator('#auth-form [name=nis]').fill('20260001');
     await page.locator('#auth-form [name=password]').fill('password-browser-aman');
     await page.locator('#auth-form [name=confirm]').fill('password-browser-aman');
     await page.locator('#auth-submit').click();
     await page.locator('#greeting').waitFor();
+    assert.equal(await page.locator('#current-branch').innerText(), 'PalComTech Lahat');
     assert.equal(await page.locator('aside .brand-mark img').isVisible(), true);
     await page.locator('aside [data-view=career]').click();
     await page.locator('#career-form [name=category]').selectOption('UI/UX Design');
@@ -36,7 +40,7 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('#career-save').click();
     await page.getByText('Profil berhasil disimpan.', { exact: true }).waitFor();
     await page.locator('#career-match').click();
-    await page.getByText(/Profil pekerjaan 61 mitra belum diverifikasi/).waitFor();
+    await page.getByText(/Profil pekerjaan mitra cabangmu belum diverifikasi/).waitFor();
     await page.locator('#career-basic-plan').click();
     await page.locator('#career-plan').getByText(/Rencana dasar 14 hari/).waitFor();
     assert.match(await page.locator('#career-plan').innerText(), /Figma/);

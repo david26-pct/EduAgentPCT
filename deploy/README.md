@@ -19,7 +19,7 @@ Instalasi remote belum dijalankan. SSH ke port 22 IP yang diberikan menolak kone
 Paket dapat dibangun dari checkout menggunakan:
 
 ```sh
-tar -czf /workspace/artifacts/eduagentpct-deploy.tar.gz package.json package-lock.json server.js career.js public deploy scripts
+tar -czf /workspace/artifacts/eduagentpct-deploy.tar.gz package.json package-lock.json server.js career.js branch-migration.js public deploy scripts
 ```
 
 Transfer paket ke home pengguna VPS melalui SCP dengan port SSH yang dikonfirmasi. Di VPS, ekstrak ke direktori kosong, baca skripnya, lalu jalankan `sudo bash deploy/install-vps.sh` dari direktori hasil ekstraksi.

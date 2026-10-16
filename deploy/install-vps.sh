@@ -33,7 +33,7 @@ fi
 export PATH="/opt/node-v$NODE_VERSION/bin:$PATH"
 RELEASE="$APP_DIR/releases/$(date -u +%Y%m%dT%H%M%SZ)-$$"
 install -d -m 0755 "$RELEASE"
-cp "$SOURCE_DIR/server.js" "$SOURCE_DIR/career.js" "$SOURCE_DIR/package.json" "$SOURCE_DIR/package-lock.json" "$RELEASE/"
+cp "$SOURCE_DIR/server.js" "$SOURCE_DIR/career.js" "$SOURCE_DIR/branch-migration.js" "$SOURCE_DIR/package.json" "$SOURCE_DIR/package-lock.json" "$RELEASE/"
 cp -R "$SOURCE_DIR/public" "$SOURCE_DIR/scripts" "$RELEASE/"
 find "$RELEASE" -type d -exec chmod 0755 {} +
 find "$RELEASE" -type f -exec chmod 0644 {} +
@@ -44,7 +44,13 @@ if [[ -f "$STATE_DIR/app.sqlite" ]]; then
   chmod 0600 /var/backups/eduagentpct/*.sqlite
 fi
 # Import the user-confirmed list under the service account; preserve existing entries.
-runuser -u eduagentpct -- env DB_PATH="$STATE_DIR/app.sqlite" "/opt/node-v$NODE_VERSION/bin/node" "$RELEASE/scripts/import-partners.js" "$RELEASE/scripts/partners-palcomtech.json"
+# Pause requests while account/letter uniqueness is migrated to per-branch.
+systemctl stop eduagentpct 2>/dev/null || true
+if ! runuser -u eduagentpct -- env DB_PATH="$STATE_DIR/app.sqlite" "/opt/node-v$NODE_VERSION/bin/node" "$RELEASE/scripts/import-partners.js" "$RELEASE/scripts/partners-palcomtech.json"; then
+  systemctl start eduagentpct 2>/dev/null || true
+  echo 'Migration/import failed; deployment stopped. Inspect logs before retrying.' >&2
+  exit 1
+fi
 # Keep any existing current release for operator rollback; never remove the database.
 ln -s "$RELEASE" "$APP_DIR/current.next"
 mv -Tf "$APP_DIR/current.next" "$APP_DIR/current"

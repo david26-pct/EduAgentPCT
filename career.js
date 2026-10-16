@@ -29,7 +29,7 @@ export function registerCareerRoutes(app, db, { aiKey = process.env.AI_API_KEY, 
   app.get('/api/career/matches', (req, res) => {
     const profile = getProfile(req.student.id);
     if (!profile) return res.status(400).json({ error: 'Simpan profil keahlian terlebih dahulu.' });
-    const all = db.prepare('SELECT partners.id,partners.name,partner_profiles.data FROM partner_profiles JOIN partners ON partners.id=partner_profiles.partner_id').all();
+    const all = db.prepare('SELECT partners.id,partners.name,partner_profiles.data FROM partner_profiles JOIN partners ON partners.id=partner_profiles.partner_id WHERE partners.branch=?').all(req.student.branch);
     const eligible = all.map(p => ({ ...p, ...JSON.parse(p.data) })).filter(p => p.verified === true && p.acceptance !== 'closed' && p.categories.includes(profile.category) && p.request_types.includes(profile.request_type));
     const matches = eligible.map(p => {
       const overlap = p.skills.filter(s => profile.skills.includes(normalize(s)));

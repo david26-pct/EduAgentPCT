@@ -1,9 +1,11 @@
+import { BRANCHES } from './branches.js';
 import { initCareer } from './career.js';
 import './chatbot.js';
 import { REQUEST_TYPES, CATEGORIES } from './request-options.js';
 const $ = s => document.querySelector(s);
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-let mode = 'login', student, partners = [], letters = [];
+let mode = 'login', student, partners = [], letters = [], branchDetails = null;
+for (const name of BRANCHES) $('#auth-form [name=branch]').add(new Option(name, name));
 $('[name="request_type"]').innerHTML = Object.entries(REQUEST_TYPES).map(([value, name]) => `<option value="${value}">${value} (${name})</option>`).join('');
 $('[name="category"]').innerHTML += CATEGORIES.map(name => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join('');
 async function api(path, options = {}) {
@@ -43,16 +45,18 @@ $('#auth-form').onsubmit = async event => {
   catch (e) { $('#auth-error').textContent = e.message; }
   finally { $('#auth-submit').disabled = false; }
 };
-function signedOut() { career.clear(); student = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); $('#participants').replaceChildren(); $('#preview').close(); $('#chatbot-panel').close(); $('#preview-content').replaceChildren(); }
+function signedOut() { career.clear(); student = null; branchDetails = null; letters = []; partners = []; $('#workspace').hidden = true; $('#auth').hidden = false; $('#letter-form').reset(); $('#participants').replaceChildren(); $('#preview').close(); $('#chatbot-panel').close(); $('#preview-content').replaceChildren(); }
 $('#logout').onclick = async () => { try { await api('/logout', { method: 'POST', body: '{}' }); signedOut(); } catch (e) { toast(e.message); } };
 const today = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'); };
 async function signedIn() {
   $('#auth').hidden = true; $('#workspace').hidden = false;
+  $('#current-branch').textContent = 'PalComTech ' + student.branch;
   $('#student-name').textContent = student.name; $('#avatar').textContent = student.name[0].toUpperCase();
   $('#greeting').textContent = `Halo, ${student.name.split(' ')[0]} 👋`;
   $('#participants').replaceChildren(); addParticipant(student.name);
   $('#letter-form').elements.issued.value = today();
   try {
+    branchDetails = (await api('/branch')).letterhead;
     partners = await api('/partners');
     const select = $('[name="partner_id"]');
     select.innerHTML = '<option value="">Pilih mitra resmi</option>' + partners.map(p => `<option value="${p.id}">${escapeHTML(p.name)}</option>`).join('');
@@ -99,7 +103,8 @@ const formatDate = value => new Date(value + 'T00:00:00').toLocaleDateString('id
 function preview(data) {
   const partner = partners.find(p => p.id === data.partner_id);
   const requestName = REQUEST_TYPES[data.request_type || 'PKL'];
-  $('#preview-content').innerHTML = `<div class="preview-letterhead"><span class="brand-mark" role="img" aria-label="Logo PalComTech"><img src="/assets/palcomtech-letterhead.jpg" alt="" width="1239" height="222"></span><h2>PalComTech Lahat</h2></div><p>Nomor: ${escapeHTML(data.number || '(Belum ada nomor — DRAF)')}<br>Perihal: Permohonan ${escapeHTML(requestName)}</p><p>Kepada Yth,<br>${escapeHTML(partner?.recipient || '')}<br>${escapeHTML(partner?.name || '')}<br>Di Tempat</p><p>Dengan hormat,</p><p>Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech Lahat untuk dapat menjalankan ${escapeHTML(requestName)} (${escapeHTML(data.request_type || 'PKL')}) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.</p><p>Adapun nama siswa yang akan melaksanakan ${escapeHTML(requestName)} pada ${escapeHTML(formatDate(data.start))} s.d. ${escapeHTML(formatDate(data.end))}, sebagai berikut:</p><p>Kategori: ${escapeHTML(data.category || 'Belum dipilih (surat lama)')}</p><table><thead><tr><th>No.</th><th>Nama</th><th>Program Studi</th></tr></thead><tbody>${data.participants.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHTML(p.name)}</td><td>${escapeHTML(p.program)}</td></tr>`).join('')}</tbody></table><p>Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya diucapkan terima kasih.</p><p>Lahat, ${escapeHTML(formatDate(data.issued))}<br>Pimpinan</p><br><br><p>Abdul Rajab, S.E.<br>01.PCT.16.LHT</p><p><small>Contact Person: Akhmad Wan Mukhlas (Koordinator Akademik)<br>0823-73725066</small></p>`;
+  const head = branchDetails;
+  $('#preview-content').innerHTML = `<div class="preview-letterhead"><span class="brand-mark" role="img" aria-label="Logo PalComTech"><img src="/assets/palcomtech-letterhead.jpg" alt="" width="1239" height="222"></span><h2>PalComTech ${escapeHTML(student.branch)}</h2></div><p>Nomor: ${escapeHTML(data.number || '(Belum ada nomor — DRAF)')}<br>Perihal: Permohonan ${escapeHTML(requestName)}</p><p>Kepada Yth,<br>${escapeHTML(partner?.recipient || '')}<br>${escapeHTML(partner?.name || '')}<br>Di Tempat</p><p>Dengan hormat,</p><p>Kami mengharapkan kesediaan Bapak/Ibu untuk memberikan izin kepada siswa Lembaga Pendidikan Komputer dan Internet PalComTech ${escapeHTML(student.branch)} untuk dapat menjalankan ${escapeHTML(requestName)} (${escapeHTML(data.request_type || 'PKL')}) dalam lingkungan Kantor/Perusahaan yang Bapak/Ibu pimpin, guna mengaplikasikan ilmu pengetahuan dan keterampilan yang dimiliki oleh siswa tersebut.</p><p>Adapun nama siswa yang akan melaksanakan ${escapeHTML(requestName)} pada ${escapeHTML(formatDate(data.start))} s.d. ${escapeHTML(formatDate(data.end))}, sebagai berikut:</p><p>Kategori: ${escapeHTML(data.category || 'Belum dipilih (surat lama)')}</p><table><thead><tr><th>No.</th><th>Nama</th><th>Program Studi</th></tr></thead><tbody>${data.participants.map((p, i) => `<tr><td>${i + 1}</td><td>${escapeHTML(p.name)}</td><td>${escapeHTML(p.program)}</td></tr>`).join('')}</tbody></table><p>Demikian surat ini kami sampaikan, atas perhatian dan kerjasamanya diucapkan terima kasih.</p><p>${escapeHTML(head?.city || student.branch)}, ${escapeHTML(formatDate(data.issued))}<br>Pimpinan</p><br><br><p>${escapeHTML(head?.leader || 'Pimpinan cabang belum dikonfirmasi')}<br>${escapeHTML(head?.leader_id || '')}</p><p><small>Contact Person: ${escapeHTML(head?.contact || 'Hubungi akademik cabang')}<br>${escapeHTML(head?.contact_phone || '')}</small></p>`;
   $('#preview').showModal();
 }
 $('#preview-button').onclick = () => { if (validForm()) preview(formData()); };

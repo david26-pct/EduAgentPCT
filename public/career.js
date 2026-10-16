@@ -55,7 +55,7 @@ export function initCareer({ api, toast, onChoose }) {
       const data = await api('/career/matches'); if (version !== generation || dirty || usedProfile !== JSON.stringify(profile)) return;
       const target = $('#career-matches'); target.replaceChildren();
       const note = document.createElement('p'); note.className = 'fine'; note.textContent = data.note; target.append(note);
-      if (!data.matches.length) { const empty = document.createElement('p'); empty.className = 'notice'; empty.textContent = data.verified_profiles ? 'Belum ada profil mitra terverifikasi yang sesuai dengan kategori dan jenis kegiatanmu. Konsultasikan pilihanmu ke akademik.' : 'Profil pekerjaan 61 mitra belum diverifikasi. Rekomendasi belum dapat ditampilkan. Kamu tetap dapat memilih mitra dari daftar surat dan berkonsultasi dengan akademik.'; target.append(empty); }
+      if (!data.matches.length) { const empty = document.createElement('p'); empty.className = 'notice'; empty.textContent = data.verified_profiles ? 'Belum ada profil mitra terverifikasi yang sesuai dengan kategori dan jenis kegiatanmu. Konsultasikan pilihanmu ke akademik.' : 'Profil pekerjaan mitra cabangmu belum diverifikasi. Rekomendasi belum dapat ditampilkan. Kamu tetap dapat memilih mitra dari daftar surat dan berkonsultasi dengan akademik.'; target.append(empty); }
       for (const match of data.matches) {
         const card = document.createElement('article'); card.className = 'career-result';
         const title = document.createElement('h3'); title.textContent = match.name;

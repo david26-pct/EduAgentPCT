@@ -25,7 +25,7 @@ test('Daftar 61 mitra diimpor utuh, tersedia lewat API, dan aman diimpor ulang',
     const existing = db.prepare('SELECT * FROM partners WHERE name=?').get('Astra Motor');
     assert.equal(existing.id, oldId); assert.equal(existing.recipient, 'Manager');
     const url = `http://127.0.0.1:${server.address().port}/api`;
-    const registration = await fetch(url + '/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Siswa Mitra', nis: '777777', password: 'password-mitra-aman' }) });
+    const registration = await fetch(url + '/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ branch: 'Lahat', name: 'Siswa Mitra', nis: '777777', password: 'password-mitra-aman' }) });
     assert.equal(registration.status, 200);
     const response = await fetch(url + '/partners', { headers: { Cookie: registration.headers.get('set-cookie').split(';')[0] } });
     assert.equal(response.status, 200);
