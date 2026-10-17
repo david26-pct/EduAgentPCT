@@ -1,5 +1,7 @@
 # EduAgentPCT
 
+Dokumentasi knowledge berbasis source: [README](docs/knowledge/README.md) · [MOC](docs/knowledge/MOC.md) · [Project Performance](docs/knowledge/project-performance.md).
+
 Versi awal portal siswa LKP PalComTech untuk membuat surat permohonan PKL. Saat ini berupa aplikasi web responsif dan backend Node.js. Paket Flutter Android/iOS/Windows/macOS belum dibuat; jangan menyebut versi ini sebagai aplikasi native yang selesai.
 
 ## Fitur yang sudah berjalan
