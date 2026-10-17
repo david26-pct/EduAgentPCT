@@ -1,5 +1,7 @@
 # EduAgentPCT — Project Knowledge
 
+[Dokumen lengkap dalam satu file](../PROJECT-MANAGER-PERFORMANCE.md)
+
 Dokumentasi manajemen proyek dan teknis berdasarkan source code serta konfigurasi yang ada. Bahasa dokumentasi: Indonesia.
 
 - Tanggal pemeriksaan: **2026-10-17**.

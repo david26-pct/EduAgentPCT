@@ -1,5 +1,7 @@
 # MOC — Map of Content
 
+[Dokumen lengkap Project Manager Performance](../PROJECT-MANAGER-PERFORMANCE.md)
+
 Mulai dari [README Knowledge](README.md). Semua catatan di bawah berada pada snapshot yang sama.
 
 ## Manajemen proyek
