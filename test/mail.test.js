@@ -15,7 +15,7 @@ test('Email otomatis: antrean tahan restart, per cabang, revisi, tanpa PII, tanp
  try{
   const registration=await fetch(base+'/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({branch:'Lahat',name:'Siswa Privat',nis:'808080',password:'password-test-aman'})});
   const headers={'Content-Type':'application/json',Cookie:registration.headers.get('set-cookie').split(';')[0]};
-  const data={request_type:'PKL',category:'Desain Grafis',partner_id:1,start:'2026-10-01',end:'2026-11-01',issued:'2026-09-01',participants:[{name:'Siswa Privat',program:'Program Profesional 1 Tahun'}]};
+  const data={request_type:'PKL',category:'Desain Grafis',partner_id:1,class_name:'Koding A 2026',issued:'2026-09-01',participants:[{name:'Siswa Privat',program:'Program Profesional 1 Tahun'}]};
   const response=await fetch(base+'/letters',{method:'POST',headers,body:JSON.stringify(data)});assert.equal(response.status,201);const {id}=await response.json();
   assert.equal(sent.length,0,'Penyimpanan pengajuan tidak menunggu panggilan SMTP');
   assert.equal(db.prepare('SELECT count(*) AS n FROM academic_email_jobs').get().n,1);

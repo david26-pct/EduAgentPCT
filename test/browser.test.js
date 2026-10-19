@@ -59,8 +59,7 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('#letter-form [name=category]').selectOption('UI/UX Design');
     assert.equal(await page.locator('#letter-form [name=number]').count(),0);
     await page.locator('[name=partner_id]').selectOption('1');
-    await page.locator('[name=start]').fill('2026-10-05');
-    await page.locator('[name=end]').fill('2026-11-06');
+    await page.locator('#letter-form [name=class_name]').fill('Koding A 2026');
     await page.locator('#add-participant').click();
     await page.locator('.participant-name').nth(1).fill('Siswa Kedua');
     await page.locator('#preview-button').click();
@@ -96,13 +95,15 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await staffPage.getByText('Catatan revisi sudah tersedia di akun siswa.',{exact:true}).waitFor();
     await page.locator('#history-refresh').click();
     await page.locator('#history .complete').click();
-    await page.locator('#letter-form [name=end]').fill('2026-11-10');
+    await page.locator('#letter-form [name=class_name]').fill('Koding B 2026');
     await page.locator('#save-letter').click();
     await page.locator('#history .whatsapp').waitFor();
     assert.equal(db.prepare('SELECT count(*) AS n FROM letters').get().n,1);
     await staffPage.locator('#academic-refresh').click();
     await staffPage.locator('#academic-decision').waitFor();
     await staffPage.locator('[name=number]').fill('0100/PCT3/P/2026');
+    await staffPage.locator('[name=start]').fill('2026-10-05');
+    await staffPage.locator('[name=end]').fill('2026-11-10');
     await staffPage.locator('[value=approve]').click();
     await staffPage.getByText('Disetujui. PDF sudah tersedia di akun siswa.',{exact:true}).waitFor();
     await staffContext.close();
@@ -116,6 +117,7 @@ test('Browser desktop dan mobile: daftar, tambah peserta, pratinjau, simpan, dan
     await page.locator('#history .download').click();
     const download = await downloadEvent; await download.saveAs(join(dir, 'letter.pdf'));
     const pdfText = execFileSync('pdftotext', ['-layout', join(dir, 'letter.pdf'), '-'], { encoding: 'utf8' });
+    assert.match(pdfText, /Kelas\/Angkatan: Koding B 2026/);assert.match(pdfText, /5 Oktober 2026 s.d. 10\s+November 2026/);
     assert.match(pdfText, /0100\/PCT3\/P\/2026/); assert.match(pdfText, /Siswa Browser/); assert.match(pdfText, /Siswa Kedua/); assert.match(pdfText, /Abdul Rajab/); assert.match(pdfText, /Thread Case Study/); assert.match(pdfText, /UI\/UX Design/);
     await page.locator('aside [data-view=dashboard]').click();
     mkdirSync('/workspace/artifacts', { recursive: true });

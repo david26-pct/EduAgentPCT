@@ -11,9 +11,9 @@ function message(s){$('#academic-message').textContent=s;}
 async function review(value){
  const data=await api('/requests/'+encodeURIComponent(value));letter=data;
  $('#academic-review').hidden=false;const target=$('#academic-details');target.replaceChildren();
- for(const [label,value] of [['Status',labels[data.status]],['Siswa',`${data.student_name} · NIS ${data.nis}`],['Cabang',data.branch],['Tujuan',data.partner_name],['Sumber tujuan',data.custom_partner_name ? 'Isian siswa — verifikasi instansi/perusahaan sebelum menyetujui.' : 'Daftar mitra cabang'],['Kegiatan',`${data.request_type} · ${data.category||'Kategori belum diisi'}`],['Periode',`${data.start} s.d. ${data.end}`],['Tanggal surat',data.issued],['Nomor',data.number||'Belum diterbitkan'],['Catatan',data.review_note||'—']])target.append(text('p',`${label}: ${value}`));
+ for(const [label,value] of [['Status',labels[data.status]],['Siswa',`${data.student_name} · NIS ${data.nis}`],['Cabang',data.branch],['Tujuan',data.partner_name],['Sumber tujuan',data.custom_partner_name ? 'Isian siswa — verifikasi instansi/perusahaan sebelum menyetujui.' : 'Daftar mitra cabang'],['Kegiatan',`${data.request_type} · ${data.category||'Kategori belum diisi'}`],['Kelas/Angkatan',data.class_name||'Belum diisi (surat lama)'],['Periode',data.start&&data.end?`${data.start} s.d. ${data.end}`:'Menunggu penetapan akademik'],['Tanggal surat',data.issued],['Nomor',data.number||'Belum diterbitkan'],['Catatan',data.review_note||'—']])target.append(text('p',`${label}: ${value}`));
  target.append(text('h3','Peserta'));for(const p of data.participants)target.append(text('p',`${p.name} — ${p.program}`));
- $('#academic-decision').hidden=data.status!=='pending';$('#academic-decision').elements.number.value=data.number||'';$('#academic-decision').elements.note.value='';
+ $('#academic-decision').hidden=data.status!=='pending';$('#academic-decision').elements.number.value=data.number||'';$('#academic-decision').elements.note.value='';for(const field of ['start','end'])$('#academic-decision').elements[field].value=data[field]||'';
  const history=$('#academic-events');history.replaceChildren();for(const event of data.events)history.append(text('p',`${event.created} · ${event.actor_name} · ${{submitted:'Mengajukan',resubmitted:'Mengajukan ulang',approved:'Menyetujui',revision:'Meminta revisi'}[event.action]||event.action}${event.number?' · '+event.number:''}${event.note?' · '+event.note:''}`,'fine'));
 }
 async function load(){
@@ -28,6 +28,7 @@ $('#academic-logout').onclick=async()=>{try{await api('/logout',{});clear();mess
 $('#academic-refresh').onclick=async()=>{message('');try{await load();}catch(e){message(e.message);}};
 $('#academic-decision').onsubmit=async event=>{
  event.preventDefault();if(!letter)return;const data=Object.fromEntries(new FormData(event.target));data.action=event.submitter.value;data.version=letter.version;
+ if(data.action==='approve'&&(!data.start||!data.end||data.start>data.end)){message('Isi tanggal mulai dan selesai; tanggal selesai tidak boleh sebelum tanggal mulai.');return;}
  if(data.action==='approve'&&!data.number.trim()){message('Isi nomor surat terlebih dahulu.');return;}if(data.action==='revision'&&!data.note.trim()){message('Isi catatan revisi terlebih dahulu.');return;}
  const buttons=event.target.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);message('');
  try{await api('/requests/'+letter.review_token+'/decision',data);await load();message(data.action==='approve'?'Disetujui. PDF sudah tersedia di akun siswa.':'Catatan revisi sudah tersedia di akun siswa.');}

@@ -21,11 +21,11 @@ test('Amplop DL: persetujuan/pemilik wajib, logo, nama tujuan manual/resmi, dan 
   for(const mode of ['official','custom','long']){
    const target=mode==='long'?'W'.repeat(150):'PT Tujuan Isian Siswa';
    if(mode==='long')db.prepare('UPDATE partners SET name=?,recipient=? WHERE id=1').run(target,'W'.repeat(150));
-   const body={request_type:'PKL',category:'Desain Grafis',partner_id:mode==='custom'?null:1,...(mode==='custom'?{custom_partner_name:target}:{}),start:'2026-10-01',end:'2026-11-01',issued:'2026-09-01',participants:[{name:'Siswa Amplop',program:'Program Profesional 1 Tahun'}]};
+   const body={request_type:'PKL',category:'Desain Grafis',partner_id:mode==='custom'?null:1,...(mode==='custom'?{custom_partner_name:target}:{}),class_name:'Koding A 2026',issued:'2026-09-01',participants:[{name:'Siswa Amplop',program:'Program Profesional 1 Tahun'}]};
    const created=await req('/letters',body,student);assert.equal(created.status,201);const {id}=await created.json();
    assert.equal((await req(`/letters/${id}/envelope.pdf`,undefined,student)).status,403);
    const row=db.prepare('SELECT * FROM letters WHERE id=?').get(id);
-   assert.equal((await req('/academic/requests/'+row.review_token+'/decision',{action:'approve',number:mode==='long'?'W'.repeat(80):`AMPLOP/${mode}`,version:row.version},staff)).status,200);
+   assert.equal((await req('/academic/requests/'+row.review_token+'/decision',{action:'approve',start:'2026-10-01',end:'2026-11-01',number:mode==='long'?'W'.repeat(80):`AMPLOP/${mode}`,version:row.version},staff)).status,200);
    assert.equal((await req(`/letters/${id}/envelope.pdf`,undefined,other)).status,404);
    const envelope=await req(`/letters/${id}/envelope.pdf`,undefined,student);assert.equal(envelope.status,200);assert.match(envelope.headers.get('content-type'),/application\/pdf/);
    const path=join(dir,mode+'.pdf');writeFileSync(path,Buffer.from(await envelope.arrayBuffer()));

@@ -247,3 +247,5 @@ Draf amplop memakai format DL landscape 220 × 110 mm, satu halaman: logo asli P
 Cetak pada media DL dengan **Actual size / 100%**, tanpa Fit to page. Sesuaikan arah pemasukan amplop dengan printer dan uji pada kertas biasa terlebih dahulu. Ini layout untuk dicetak pada amplop jadi, bukan pola potong/lipat amplop dari kertas A4. Gunakan printer yang mendukung ukuran amplop tersebut.
 
 Tes memeriksa unduhan lewat browser setelah approval, penolakan akun lain/pending, logo tertanam, ukuran PDF, satu halaman untuk nama panjang, dan nama tujuan resmi/manual. Hasil cetak fisik di printer pengguna belum diuji.
+
+Perubahan alur terbaru: [Tanggal kegiatan oleh akademik dan kelas/angkatan siswa](docs/academic-dates-class.md).

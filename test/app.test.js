@@ -28,7 +28,7 @@ test('Alur siswa, draf, PDF, isolasi akun, dan validasi keamanan', async () => {
     assert.equal((await request('/login', account)).status, 200);
     const raw = db.prepare('SELECT * FROM students WHERE nis=?').get(account.nis);
     assert.notEqual(raw.hash, account.password); assert.equal(raw.hash.length, 128);
-    const letter = { request_type: 'PKL', category: 'Internet of Things', partner_id: 1, start: '2026-10-05', end: '2026-11-06', issued: '2026-09-17', participants: [{ name: account.name, program: 'Komputer Internet dan Bisnis Digital' }] };
+    const letter = { request_type: 'PKL', category: 'Internet of Things', partner_id: 1, class_name:'Koding A 2026', issued: '2026-09-17', participants: [{ name: account.name, program: 'Komputer Internet dan Bisnis Digital' }] };
     assert.equal((await request('/letters', { ...letter, end: '2026-01-01' }, cookie)).status, 400);
     assert.equal((await request('/letters', { ...letter, start: '2026-02-30' }, cookie)).status, 400);
     assert.equal((await request('/letters', { ...letter, partner_id: 999 }, cookie)).status, 400);
@@ -48,7 +48,7 @@ test('Alur siswa, draf, PDF, isolasi akun, dan validasi keamanan', async () => {
     assert.equal((await request(`/letters/${draft.id}/pdf`, undefined, cookie)).status, 403);
     const created = await request('/letters', letter, cookie); assert.equal(created.status, 201);
     const { id } = await created.json();
-    db.prepare("UPDATE letters SET status='approved',number=? WHERE id=?").run('0294/PCT3/P/2026',id);
+    db.prepare("UPDATE letters SET start='2026-10-01',end='2026-11-01',status='approved',number=? WHERE id=?").run('0294/PCT3/P/2026',id);
     assert.equal((await request('/letters', { ...letter, number: '0294/PCT3/P/2026' }, cookie)).status, 400);
     const pdf = await request(`/letters/${id}/pdf`, undefined, cookie);
     assert.equal(pdf.status, 200); assert.match(pdf.headers.get('content-type'), /application\/pdf/);

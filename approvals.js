@@ -8,7 +8,7 @@ export function initApprovals(db) {
   db.exec('BEGIN IMMEDIATE');
   try {
     const cols = db.prepare('PRAGMA table_info(letters)').all().map(c => c.name);
-    const additions = { status: "TEXT NOT NULL DEFAULT 'pending'", review_token: 'TEXT', review_note: "TEXT NOT NULL DEFAULT ''", version: 'INTEGER NOT NULL DEFAULT 1', approved_by: 'INTEGER', approved_at: 'TEXT' };
+    const additions = { class_name: "TEXT NOT NULL DEFAULT ''", status: "TEXT NOT NULL DEFAULT 'pending'", review_token: 'TEXT', review_note: "TEXT NOT NULL DEFAULT ''", version: 'INTEGER NOT NULL DEFAULT 1', approved_by: 'INTEGER', approved_at: 'TEXT' };
     for (const [name, type] of Object.entries(additions)) if (!cols.includes(name)) db.exec(`ALTER TABLE letters ADD COLUMN ${name} ${type}`);
     for (const row of db.prepare('SELECT id FROM letters WHERE review_token IS NULL').all()) db.prepare('UPDATE letters SET review_token=? WHERE id=?').run(randomBytes(24).toString('hex'), row.id);
     db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS letters_review_token ON letters(review_token);
@@ -59,7 +59,9 @@ export function registerAcademicRoutes(app, db, secure) {
   router.get('/requests',(req,res)=>res.json(db.prepare('SELECT letters.*,students.name AS student_name,COALESCE(letters.custom_partner_name,partners.name) AS partner_name FROM letters JOIN students ON students.id=letters.student_id LEFT JOIN partners ON partners.id=letters.partner_id WHERE letters.branch=? ORDER BY CASE status WHEN \'pending\' THEN 0 ELSE 1 END,letters.id DESC').all(req.academic.branch).map(row=>({...row,participants:JSON.parse(row.participants)}))));
   router.get('/requests/:token',(req,res)=>{const row=find(req.params.token,req.academic.branch);if(!row)return res.status(404).json({error:'Pengajuan tidak ditemukan di cabang akun ini.'});res.json(present(row));});
   router.post('/requests/:token/decision',(req,res)=>{
-    const {action,number,note='',version}=req.body;
+    const {action,number,note='',version,start,end}=req.body;
+    const validDate = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10)===v;
+    if (action==='approve' && (!validDate(start)||!validDate(end)||start>end)) return res.status(400).json({error:'Isi tanggal mulai dan selesai kegiatan yang valid; tanggal selesai tidak boleh sebelum tanggal mulai.'});
     if (!['approve','revision'].includes(action) || !Number.isSafeInteger(version) || typeof note!=='string' || note.length>1000 || (action==='revision'&&!note.trim()) || (action==='approve'&&(typeof number!=='string'||!number.trim()||number.length>80||/[\x00-\x1f]/.test(number)))) return res.status(400).json({error:'Isi nomor surat untuk persetujuan atau catatan untuk revisi.'});
     db.exec('BEGIN IMMEDIATE');
     try {
@@ -67,7 +69,7 @@ export function registerAcademicRoutes(app, db, secure) {
       if (!letter) {db.exec('ROLLBACK');return res.status(404).json({error:'Pengajuan tidak ditemukan.'});}
       if (letter.status!=='pending'||letter.version!==version) {db.exec('ROLLBACK');return res.status(409).json({error:'Pengajuan telah berubah atau sudah diperiksa. Muat ulang sebelum melanjutkan.'});}
       const status=action==='approve'?'approved':'revision';
-      db.prepare('UPDATE letters SET status=?,number=?,review_note=?,approved_by=?,approved_at=?,version=version+1 WHERE id=?').run(status,action==='approve'?number.trim():null,note.trim(),action==='approve'?req.academic.id:null,action==='approve'?new Date().toISOString():null,letter.id);
+      db.prepare('UPDATE letters SET start=?,end=?,status=?,number=?,review_note=?,approved_by=?,approved_at=?,version=version+1 WHERE id=?').run(action==='approve'?start:letter.start,action==='approve'?end:letter.end,status,action==='approve'?number.trim():null,note.trim(),action==='approve'?req.academic.id:null,action==='approve'?new Date().toISOString():null,letter.id);
       audit(db,letter.id,{...req.academic,role:'academic'},status,action==='approve'?number.trim():null,note.trim());
       db.exec('COMMIT');res.json(present(find(req.params.token,req.academic.branch)));
     } catch(e) {db.exec('ROLLBACK');if(String(e).includes('UNIQUE'))return res.status(409).json({error:'Nomor surat sudah digunakan di cabang ini.'});throw e;}

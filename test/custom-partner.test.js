@@ -25,7 +25,7 @@ test('Lainnya: ketik tujuan, revisi, periksa akademik, setujui, dan PDF tanpa me
   await page.locator('#letter-form [name=partner_id]').selectOption('other');
   await page.locator('[name=custom_partner_name]').fill('PT Tujuan Pilihan Siswa');
   await page.locator('#letter-form [name=category]').selectOption('Desain Grafis');
-  await page.locator('#letter-form [name=start]').fill('2026-10-01');await page.locator('#letter-form [name=end]').fill('2026-11-01');
+  await page.locator('#letter-form [name=class_name]').fill('Koding A 2026');
   await page.locator('#preview-button').click();assert.match(await page.locator('#preview-content').innerText(),/PT Tujuan Pilihan Siswa/);await page.locator('#close-preview').click();
   await page.locator('#save-letter').click();await page.locator('#history .whatsapp').waitFor();
   assert.match(await page.locator('#history').innerText(),/Tujuan lainnya · isian siswa/);
@@ -37,7 +37,7 @@ test('Lainnya: ketik tujuan, revisi, periksa akademik, setujui, dan PDF tanpa me
   await page.locator('#history-refresh').click();await page.locator('#history .complete').click();assert.equal(await page.locator('[name=custom_partner_name]').inputValue(),'PT Tujuan Pilihan Siswa');
   await page.locator('[name=custom_partner_name]').fill('PT Tujuan Pilihan Siswa Lahat');await page.locator('#save-letter').click();await page.locator('#history .whatsapp').waitFor();
   const changed=db.prepare('SELECT * FROM letters WHERE id=?').get(letter.id);
-  response=await fetch(base+'/api/academic/requests/'+letter.review_token+'/decision',{method:'POST',headers,body:JSON.stringify({action:'approve',number:'MANUAL/001',version:changed.version})});assert.equal(response.status,200);
+  response=await fetch(base+'/api/academic/requests/'+letter.review_token+'/decision',{method:'POST',headers,body:JSON.stringify({action:'approve',start:'2026-10-01',end:'2026-11-01',number:'MANUAL/001',version:changed.version})});assert.equal(response.status,200);
   await page.locator('#history-refresh').click();await page.locator('#history .download').waitFor();
   const download=page.waitForEvent('download');await page.locator('#history .download').click();const file=await download;await file.saveAs(join(dir,'custom.pdf'));
   const text=execFileSync('pdftotext',['-layout',join(dir,'custom.pdf'),'-'],{encoding:'utf8'});assert.match(text,/PT Tujuan Pilihan Siswa Lahat/);assert.match(text,/MANUAL\/001/);

@@ -99,11 +99,13 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
   app.get('/api/partners', (req, res) => res.json(db.prepare('SELECT * FROM partners WHERE branch=? ORDER BY name').all(req.student.branch)));
   app.get('/api/letters', (req, res) => res.json(db.prepare('SELECT letters.*, COALESCE(letters.custom_partner_name, partners.name) AS partner_name FROM letters LEFT JOIN partners ON partners.id=letters.partner_id WHERE student_id=? ORDER BY letters.id DESC').all(req.student.id).map(l => ({ ...l, participants: JSON.parse(l.participants), whatsapp_url: l.status === 'pending' ? whatsappLink(l) : null, email_notification: notifications.statusFor(l) }))));
   function validateLetter(req,res,next) {
-    const { number, partner_id, start, end, issued, participants, request_type, category, custom_partner_name } = req.body;
+    const { number, partner_id, start, end, issued, participants, request_type, category, custom_partner_name, class_name } = req.body;
+    if (start !== undefined || end !== undefined) return res.status(400).json({error:'Tanggal kegiatan hanya dapat ditetapkan oleh akademik.'});
+    if (!text(class_name,100)) return res.status(400).json({error:'Isi nama kelas/angkatan (maksimal 100 karakter).'});
     if (number) return res.status(400).json({error:'Nomor surat hanya dapat diisi oleh akademik saat menyetujui pengajuan.'});
     if (!Object.hasOwn(REQUEST_TYPES,request_type || '') || !CATEGORIES.includes(category)) return res.status(400).json({error:'Pilih jenis dan kategori yang tersedia.'});
     const date = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0,10)===v;
-    if (!date(start)||!date(end)||!date(issued)||start>end||!Array.isArray(participants)||!participants.length||participants.length>10||participants.some(p=>!text(p.name,100)||!text(p.program,150))) return res.status(400).json({error:'Periksa tanggal dan data peserta (maksimal 10 siswa).'});
+    if (!date(issued)||!Array.isArray(participants)||!participants.length||participants.length>10||participants.some(p=>!text(p.name,100)||!text(p.program,150))) return res.status(400).json({error:'Periksa tanggal dan data peserta (maksimal 10 siswa).'});
     if (!participants.some(p=>p.name.trim().toLocaleLowerCase('id')===req.student.name.toLocaleLowerCase('id'))) return res.status(400).json({error:'Nama pemilik akun wajib tercantum dalam peserta.'});
     if (partner_id === null) {
       if (!text(custom_partner_name,150)) return res.status(400).json({error:'Isi nama instansi/perusahaan lainnya (maksimal 150 karakter).'});
@@ -111,12 +113,12 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
       if (!Number.isSafeInteger(partner_id) || partner_id < 1 || !db.prepare('SELECT id FROM partners WHERE id=? AND branch=?').get(partner_id,req.student.branch)) return res.status(400).json({error:'Pilih mitra resmi cabangmu atau Lainnya.'});
       if (custom_partner_name) return res.status(400).json({error:'Pilih Lainnya untuk mengisi tujuan sendiri.'});
     }
-    req.letterData=[partner_id,start,end,issued,JSON.stringify(participants.map(p=>({name:p.name.trim(),program:p.program.trim()}))),request_type,category,partner_id === null ? custom_partner_name.trim() : null];next();
+    req.letterData=[partner_id,issued,JSON.stringify(participants.map(p=>({name:p.name.trim(),program:p.program.trim()}))),request_type,category,partner_id === null ? custom_partner_name.trim() : null,class_name.trim()];next();
   }
   app.post('/api/letters',validateLetter,(req,res)=>{
     const token=randomBytes(24).toString('hex');db.exec('BEGIN IMMEDIATE');
     try {
-      const result=db.prepare('INSERT INTO letters(student_id,partner_id,start,end,issued,participants,request_type,category,custom_partner_name,branch,review_token) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(req.student.id,...req.letterData,req.student.branch,token);
+      const result=db.prepare("INSERT INTO letters(student_id,partner_id,issued,participants,request_type,category,custom_partner_name,class_name,branch,review_token,start,end) VALUES(?,?,?,?,?,?,?,?,?,?,'','')").run(req.student.id,...req.letterData,req.student.branch,token);
       const id=Number(result.lastInsertRowid);audit(db,id,req.student,'submitted');notifications.enqueue(id,1);db.exec('COMMIT');
       res.status(201).json({id,status:'pending',whatsapp_url:whatsappLink({branch:req.student.branch,review_token:token})});
     }catch(e){db.exec('ROLLBACK');throw e;}
@@ -127,7 +129,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
       const letter=db.prepare('SELECT * FROM letters WHERE id=? AND student_id=?').get(req.params.id,req.student.id);
       if(!letter){db.exec('ROLLBACK');return res.status(404).json({error:'Pengajuan tidak ditemukan.'});}
       if(letter.status!=='revision'){db.exec('ROLLBACK');return res.status(409).json({error:'Hanya pengajuan yang diminta revisi yang dapat diperbaiki.'});}
-      db.prepare("UPDATE letters SET partner_id=?,start=?,end=?,issued=?,participants=?,request_type=?,category=?,custom_partner_name=?,status='pending',number=NULL,approved_by=NULL,approved_at=NULL,version=version+1 WHERE id=?").run(...req.letterData,letter.id);
+      db.prepare("UPDATE letters SET partner_id=?,issued=?,participants=?,request_type=?,category=?,custom_partner_name=?,class_name=?,status='pending',number=NULL,approved_by=NULL,approved_at=NULL,version=version+1 WHERE id=?").run(...req.letterData,letter.id);
       audit(db,letter.id,req.student,'resubmitted');notifications.enqueue(letter.id,letter.version+1);db.exec('COMMIT');res.json({id:letter.id,status:'pending'});
     }catch(e){db.exec('ROLLBACK');throw e;}
   });
@@ -170,6 +172,7 @@ export function createApp({ databasePath = process.env.DB_PATH || resolve(root, 
       cells.forEach((t, i) => { doc.lineWidth(.5).strokeColor('#777').rect(x, y, widths[i], h).stroke(); doc.text(t, x + 6, y + 7, { width: widths[i] - 12 }); x += widths[i]; });
       doc.x = 52; doc.y = y + h;
     }
+    if (l.class_name) doc.font('Helvetica').fontSize(11).text(`Kelas/Angkatan: ${l.class_name}`).moveDown(.5);
     if (l.category) doc.font('Helvetica').fontSize(11).text(`Kategori: ${l.category}`).moveDown(.5);
     row(['No.', 'Nama', 'Program Studi'], true);
     JSON.parse(l.participants).forEach((p, i) => row([String(i + 1), p.name, p.program]));
